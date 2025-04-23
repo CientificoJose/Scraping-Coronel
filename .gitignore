@@ -1,0 +1,15 @@
+# Directorios a excluir
+/img-scraping/
+/deepseek_logs/
+/__pycache__/
+
+# Archivos sensibles
+*.ENV
+*.env
+
+# Archivos de base de datos
+*.db
+
+# Python cache
+*.py[cod]
+*$py.class
