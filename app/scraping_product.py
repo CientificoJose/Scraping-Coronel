@@ -226,7 +226,10 @@ def scraping_product(driver):
             code = product.find_element(By.CLASS_NAME, "span-codigo").text.replace("Código: ", "")
             codigo_sin_variante = code
             description = product.find_element(By.CLASS_NAME, "span-3").text
-            price = product.find_element(By.CLASS_NAME, "sintachar").text.strip()
+            try:
+                price = product.find_element(By.CLASS_NAME, "sintachar").text.strip()
+            except:
+                price = product.find_element(By.CLASS_NAME, "tachado").text.strip()
             image_url = product.find_element(By.CSS_SELECTOR, ".img-wrap img").get_attribute("src")
             
             # Procesar variante
@@ -277,5 +280,3 @@ def scraping_product(driver):
     
     # Return both products and category
     return products, categoria_grupal, scraping_product.db_path
-
-

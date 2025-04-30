@@ -97,6 +97,8 @@ todos_los_productos_sin_dimensiones, categoria_grupal, DB_PATH = scraping_all_pr
 # 2. Consolidar Todo en BD
 consolidar_todo_en_base_de_datos(todos_los_productos_sin_dimensiones)
 
+print(f"Path: {DB_PATH}")
+
 # 3. integrar dimensiones
 todos_los_productos = obtener_dimensiones_producto(
     todos_los_productos_sin_dimensiones,
