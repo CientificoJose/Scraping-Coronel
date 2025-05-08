@@ -12,7 +12,15 @@ from contextlib import closing
 
 # Variables globales
 global DB_PATH
+global DOWNLOAD_IMAGES
 
+# Variable global para control de descarga de imágenes
+DOWNLOAD_IMAGES = True  # Por defecto True
+
+def set_download_images(value):
+    """Función para cambiar el estado de descarga de imágenes"""
+    global DOWNLOAD_IMAGES
+    DOWNLOAD_IMAGES = value
 
 def obtener_codigo_barra(code, db_path):
     """Consulta rápida a SQLite"""
@@ -175,7 +183,7 @@ def consolidar_todo_en_base_de_datos(todos_los_productos):
             conn.commit()
             print(f"Se consolidaron {len(todos_los_productos)} productos en la base de datos")
             # print(f"Se eliminaron {deleted_count} productos con descripción vacía")
-            return True
+            return todos_los_productos
             
     except Exception as e:
         print(f"Error consolidando productos en SQLite: {str(e)}")
@@ -195,8 +203,6 @@ def scraping_product(driver):
     if not hasattr(scraping_product, 'db_path'):
         scraping_product.db_path = inicializar_bd()
 
-
-
     # Esperar a que carguen los productos
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.CLASS_NAME, "itemsBlock"))
@@ -204,60 +210,80 @@ def scraping_product(driver):
     
     products = []
     
-    # Extracción mejorada de categorías
-    breadcrumb = driver.find_element(By.CSS_SELECTOR, ".breadcrumb")
-    categorias = [span.text.strip() for span in breadcrumb.find_elements(
-            By.CSS_SELECTOR, ".breadcrumb-item.breadcrumb2"
-        ) if span.text.strip()]
-        
-    # Asignación de categorías
-    categoria_principal = categorias[0] if len(categorias) > 0 else None
-
-    # Unir todas las subcategorías (si hay más de una) separadas por comas
-    subcategoria = ", ".join(categorias[1:]) if len(categorias) > 1 else ""
-    
-    
-    
     product_elements = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
     
-    for product in product_elements:
+    for index in range(len(product_elements)):
         try:
-            # Extraer información base
-            code = product.find_element(By.CLASS_NAME, "span-codigo").text.replace("Código: ", "")
-            codigo_sin_variante = code
-            description = product.find_element(By.CLASS_NAME, "span-3").text
+            # Re-obtener los elementos de producto después de regresar
+            product_elements = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
+            product = product_elements[index]
+            
+            # Hacer scroll hasta el elemento
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", product)
+            time.sleep(0.5)  # Pequeña pausa para que termine el scroll
+            
+            # Esperar a que el elemento sea clickeable
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, ".col-art .card-product"))
+            )
+            
+            # Intentar hacer click con JavaScript si el click normal falla
             try:
-                price = product.find_element(By.CLASS_NAME, "sintachar").text.strip()
+                product.click()
             except:
-                price = product.find_element(By.CLASS_NAME, "tachado").text.strip()
-            image_url = product.find_element(By.CSS_SELECTOR, ".img-wrap img").get_attribute("src")
+                driver.execute_script("arguments[0].click();", product)
+            
+            # Esperar a que la página de detalle cargue completamente
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "sintachar"))
+            )
+            
+            # Extraer información de la página de detalle
+            try:
+                price = driver.find_element(By.CLASS_NAME, "sintachar").text.strip()
+            except:
+                price = driver.find_element(By.CLASS_NAME, "tachado").text.strip()
+            
+            code = driver.find_element(By.CLASS_NAME, "codigo").text.replace("Código: ", "")
+            description = driver.find_element(By.CLASS_NAME, "description").text
+            
+            # Extraer categorías
+            breadcrumb = driver.find_element(By.CSS_SELECTOR, ".breadcrumb")
+            categorias = [span.text.strip() for span in breadcrumb.find_elements(
+                    By.CSS_SELECTOR, ".breadcrumb-item.breadcrumb2"
+                ) if span.text.strip()]
+            
+            categoria_principal = categorias[0] if len(categorias) > 0 else None
+            subcategoria = ", ".join(categorias[1:]) if len(categorias) > 1 else ""
             
             # Procesar variante
             variant = ""
             try:
-                adicional_element = product.find_element(By.CSS_SELECTOR, ".adicional span")
+                adicional_element = driver.find_element(By.CLASS_NAME, "adicional")
                 adicional_text = adicional_element.text.strip()
                 if adicional_text:
-                    variant = f"-{adicional_text.upper().replace(' ', '')}"
-                    code += variant
+                    variant = adicional_text.upper().replace(' ', '')
+                    code += f"-{variant}"
             except:
                 pass
             
-            # Descargar imagen
-            try:
-                img_name = f"{code}.jpg"
-                img_path = os.path.join(img_dir, img_name)
-                
+            # Extraer imagen
+            image_url = driver.find_element(By.CLASS_NAME, "ngxImageZoomThumbnail").get_attribute("src")
+            
+            # Preparar nombre de imagen
+            img_name = f"{code}.jpg"
+            img_path = os.path.join(img_dir, img_name)
+            
+            # Descargar imagen solo si DOWNLOAD_IMAGES es True
+            if DOWNLOAD_IMAGES:
                 response = requests.get(image_url, stream=True)
                 if response.status_code == 200:
                     with open(img_path, 'wb') as f:
                         for chunk in response.iter_content(1024):
                             f.write(chunk)
-            except Exception as e:
-                print(f"Error descargando imagen {code}: {e}")
 
             # Obtener código de barras si existe Excel
-            codigo_barra = obtener_codigo_barra(codigo_sin_variante, scraping_product.db_path) if scraping_product.db_path else ""
+            codigo_barra = obtener_codigo_barra(code, scraping_product.db_path) if scraping_product.db_path else ""
             
             products.append({
                 'codigo': code,
@@ -265,11 +291,19 @@ def scraping_product(driver):
                 'precio': price,
                 'imagen_url': image_url,
                 'imagen_local': f"img-scraping/{img_name}",
-                'variante': variant.replace('-', '') if variant else None,
+                'variante': variant,
                 'codigo_de_barras': codigo_barra,
                 "categoria": categoria_principal,
                 "subcategoria": subcategoria
             })
+            
+            # Regresar a la página de listado
+            driver.back()
+            
+            # Esperar a que los productos vuelvan a cargar
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "itemsBlock"))
+            )
             
         except Exception as e:
             print(f"Error al extraer producto: {e}")

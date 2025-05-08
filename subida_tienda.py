@@ -1,12 +1,16 @@
-from api_tiendanube import crear_producto, buscar_producto_por_sku, actualizar_producto
+from api_tiendanube import crear_producto, buscar_producto_por_sku, actualizar_producto, limpiar_cache_productos
 from colorama import Fore
 import sqlite3
 import json
+import time
+import os
 
-PATH = "c:/Users/USER/OneDrive/Proyectos/JG-STORE/Scraping/productos_libreria.db"
+# Limpiar caché
+limpiar_cache_productos()
 
-
-
+# Rutas
+global PATH
+PATH = os.path.join(os.path.dirname(__file__), 'productos.db')
 
 def obtener_productos_de_db():
     # Conectar a la base de datos
@@ -40,15 +44,9 @@ def obtener_productos_de_db():
     conexion.close()
     
     return lista_productos
+
 # Obtener los productos en formato JSON
 todos_los_productos = obtener_productos_de_db()
-
-# Si quieres ver el resultado (opcional)
-#print(todos_los_productos)
-
-
-
-
 
 # Mostrar resumen
 print(Fore.GREEN + "\n" + "="*50)
@@ -73,7 +71,7 @@ for i, producto in enumerate(todos_los_productos[:3], 1):
     print(f"{Fore.CYAN}imagen_url:{Fore.RESET} {producto['imagen_url']}")
     print(f"{Fore.CYAN}Categoria:{Fore.RESET} {producto['categoria']}")
     print(f"{Fore.CYAN}Subcategoria:{Fore.RESET} {producto['subcategoria']}")
-    print(f"{Fore.CYAN}Dimensiones:{Fore.RESET} {producto['peso_kg']}, {producto['ancho_cm']}, {producto['alto_cm']}, {producto['profundidad_cm']}")
+    #print(f"{Fore.CYAN}Dimensiones:{Fore.RESET} {producto['peso_kg']}, {producto['ancho_cm']}, {producto['alto_cm']}, {producto['profundidad_cm']}")
     
     # Mostrar variante solo si existe
     if producto['variante']:
@@ -83,26 +81,45 @@ print(Fore.GREEN + "\n" + "="*50)
 print(f" FIN DEL LISTADO - {len(todos_los_productos)} PRODUCTOS ")
 print("="*50 + Fore.RESET)
 
+def procesar_producto(producto):
+    try:
+        producto_id = buscar_producto_por_sku(producto['codigo'])
+        start = time.time()
+        
+        if producto_id:
+            result = actualizar_producto(producto_id, producto)
+            tipo = 'actualizado'
+        else:
+            result = crear_producto(producto, PATH)
+            tipo = 'creado'
+            
+        elapsed = time.time() - start
+        return (tipo, producto['codigo'], result, elapsed)
+    except Exception as e:
+        return ('error', producto['codigo'], str(e), 0)
 
- # 3. Procesar cada producto con Tiendanube
-print(Fore.CYAN + "\nINICIANDO SINCRONIZACION CON TIENDANUBE..." + Fore.RESET)
-
-for producto in todos_los_productos:
-    # Buscar si el producto ya existe
-    producto_id = buscar_producto_por_sku(producto['codigo'])
+def procesar_productos():
+    productos = obtener_productos_de_db()
+    total_productos = len(productos)
+    productos_procesados = 0
     
-    if producto_id:
-        # Actualizar producto existente
-        if actualizar_producto(producto_id, producto):
-            print(Fore.YELLOW + f"↻ Producto actualizado: {producto['codigo']}" + Fore.RESET)
+    print(Fore.CYAN + f"\nIniciando procesamiento de {total_productos} productos..." + Fore.RESET)
+    
+    for producto in productos:
+        productos_procesados += 1
+        tipo, codigo, detalle, elapsed = procesar_producto(producto)
+        
+        if tipo == 'actualizado':
+            print(Fore.YELLOW + f"↻ Producto {codigo} actualizado en {elapsed:.2f} segundos ({productos_procesados}/{total_productos})" + Fore.RESET)
+        elif tipo == 'creado':
+            print(Fore.GREEN + f"✔ Producto {codigo} creado en {elapsed:.2f} segundos ({productos_procesados}/{total_productos})" + Fore.RESET)
         else:
-            print(Fore.RED + f"✖ Error actualizando: {producto['codigo']}" + Fore.RESET)
-    else:
-        # Crear nuevo producto
-        nuevo_id = crear_producto(producto)
-        if nuevo_id:
-            print(Fore.GREEN + f"✔ Nuevo producto creado (ID: {nuevo_id}): {producto['codigo']}" + Fore.RESET)
-        else:
-            print(Fore.RED + f"✖ Error creando: {producto['codigo']}" + Fore.RESET)
+            print(Fore.RED + f"✖ Error en producto {codigo}: {detalle} ({productos_procesados}/{total_productos})" + Fore.RESET)
+    
+    # Limpiar caché al finalizar
+    limpiar_cache_productos()
+    print(Fore.GREEN + f"\nProcesamiento completado. {productos_procesados} productos procesados." + Fore.RESET)
 
-print(Fore.CYAN + "\nPROCESO COMPLETADO" + Fore.RESET)
+if __name__ == "__main__":
+    print(Fore.CYAN + "\nINICIANDO SINCRONIZACION CON TIENDANUBE..." + Fore.RESET)
+    procesar_productos()

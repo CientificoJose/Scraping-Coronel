@@ -23,7 +23,7 @@ client = OpenAI(
 
 
 # Funciones auxiliares
-EJEMPLO_JSON = """Devuelve SOLO un JSON válido con un array de objetos,(imporante nunca dejar en 0.00 ningun valor, el valor minimo es 0.01 en general) cada uno con:
+EJEMPLO_JSON = """Devuelve SOLO un JSON válido con un array de objetos,(imporante nunca dejar en 0.00 ningun valor, el valor minimo es 0.05 en general) cada uno con:
 - peso_kg (float, peso en kg)
 - ancho_cm (float, ancho en cm)
 - alto_cm (float, altura en cm)
@@ -174,6 +174,8 @@ def actualizar_dimensiones_en_bd(productos: List[Dict], dimensiones: List[Dict],
     except Exception as e:
         print(f"Error actualizando dimensiones en BD: {str(e)}")
 
+
+
 def obtener_dimensiones_producto(todos_los_productos: List[Dict], categoria: str, db_path: str, batch_size: int = 20) -> List[Dict]:
     """
     Procesa todos los productos en lotes para obtener sus dimensiones
@@ -195,7 +197,7 @@ def obtener_dimensiones_producto(todos_los_productos: List[Dict], categoria: str
         batch = todos_los_productos[i:i + batch_size]
         lote_num = i//batch_size + 1
         total_lotes = math.ceil(len(todos_los_productos)/batch_size)
-        print(f"\nProcesando lote {lote_num} de {total_lotes} ({len(batch)} productos)")
+        #print(f"\nProcesando lote {lote_num} de {total_lotes} ({len(batch)} productos)")
         
         # Intento 1: Procesar el lote completo
         dimensiones = obtener_dimensiones_lote(batch, categoria)
@@ -206,10 +208,10 @@ def obtener_dimensiones_producto(todos_los_productos: List[Dict], categoria: str
                 producto.update(dim)
             actualizar_dimensiones_en_bd(batch, dimensiones, db_path)
             productos_exitosos += len(batch)
-            print(f"✅ Lote {lote_num} completado ({len(batch)} productos)")
+            #print(f"✅ Lote {lote_num} completado ({len(batch)} productos)")
         else:
             # Fallo - procesar productos individualmente
-            print(f"⚠️  Fallo en lote {lote_num}, procesando productos individualmente...")
+            #print(f"⚠️  Fallo en lote {lote_num}, procesando productos individualmente...")
             
             for j, producto in enumerate(batch):
                 try:
@@ -219,23 +221,23 @@ def obtener_dimensiones_producto(todos_los_productos: List[Dict], categoria: str
                         producto.update(dim[0])
                         actualizar_dimensiones_en_bd([producto], dim, db_path)
                         productos_exitosos += 1
-                        print(f"  ✅ Producto {j+1} procesado")
+                        #print(f"  ✅ Producto {j+1} procesado")
                     else:
                         productos_fallidos.append(producto['codigo'])
-                        print(f"  ❌ Producto {j+1} falló")
+                        #print(f"  ❌ Producto {j+1} falló")
                 except Exception as e:
                     productos_fallidos.append(producto['codigo'])
-                    print(f"  ❌ Producto {j+1} falló: {str(e)}")
+                    #print(f"  ❌ Producto {j+1} falló: {str(e)}")
                 
                 time.sleep(1)  # Pausa entre productos
         
         time.sleep(3)  # Pausa más larga entre lotes
     
     # Resumen final
-    print(f"\n📊 Resumen final:")
-    print(f"- Productos procesados exitosamente: {productos_exitosos}/{len(todos_los_productos)}")
+    #print(f"\n📊 Resumen final:")
+    #print(f"- Productos procesados exitosamente: {productos_exitosos}/{len(todos_los_productos)}")
     if productos_fallidos:
         print(f"- Productos fallidos: {len(productos_fallidos)}")
-        print(f"- Códigos de productos fallidos: {', '.join(productos_fallidos)}")
+        #print(f"- Códigos de productos fallidos: {', '.join(productos_fallidos)}")
     
     return todos_los_productos
