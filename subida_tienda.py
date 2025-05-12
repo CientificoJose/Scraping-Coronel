@@ -1,12 +1,18 @@
 from api_tiendanube import crear_producto, buscar_producto_por_sku, actualizar_producto, limpiar_cache_productos
-from colorama import Fore
+from colorama import Fore, Style
 import sqlite3
 import json
 import time
 import os
+from config import preguntar_download
+
+
 
 # Limpiar caché
 limpiar_cache_productos()
+
+# Preguntar al usuario si desea descargar imágenes
+preguntar_download() 
 
 # Rutas
 global PATH
@@ -48,14 +54,10 @@ def obtener_productos_de_db():
 # Obtener los productos en formato JSON
 todos_los_productos = obtener_productos_de_db()
 
-# Mostrar resumen
-print(Fore.GREEN + "\n" + "="*50)
-print(f" SCRAPING COMPLETADO - {len(todos_los_productos)} PRODUCTOS ENCONTRADOS ")
-print("="*50 + Fore.RESET)
 
 # Mostrar TODOS los productos encontrados
 print(Fore.GREEN + "\n" + "="*50)
-print(f" DETALLE COMPLETO DE {len(todos_los_productos)} PRODUCTOS ENCONTRADOS, se mostraran 3 productos como muestra ")
+print(f" DETALLE COMPLETO DE {len(todos_los_productos)} PRODUCTOS, se mostraran 3 productos como muestra ")
 print("="*50 + Fore.RESET)
 
 for i, producto in enumerate(todos_los_productos[:3], 1):

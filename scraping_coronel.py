@@ -14,6 +14,9 @@ from app.scraping_product import inicializar_bd
 import os
 import openpyxl
 from datetime import datetime
+from inputimeout import inputimeout, TimeoutOccurred
+from colorama import Fore, Style
+
 
 #Depurar
 from selenium import webdriver
@@ -28,19 +31,11 @@ import pandas as pd
 import os
 import re
 import datetime
-from colorama import Fore, Style
+
+from config import preguntar_download
 
 # Preguntar al usuario si desea descargar imágenes
-print(Fore.CYAN + "\n" + "="*50)
-print(" CONFIGURACIÓN DE DESCARGA DE IMÁGENES ")
-print("="*50)
-respuesta = input("¿Deseas descargar las imágenes de los productos? (s/n): " + Style.RESET_ALL).lower()
-set_download_images(respuesta == 's')
-if respuesta == 's':
-    print(Fore.GREEN + "✔ Las imágenes se descargarán durante el proceso" + Style.RESET_ALL)
-else:
-    print(Fore.YELLOW + "ℹ Las imágenes NO se descargarán (se mantendrán las referencias)" + Style.RESET_ALL)
-print(Fore.CYAN + "="*50 + "\n" + Style.RESET_ALL)
+preguntar_download() 
 
 # Configurar opciones de Chrome
 chrome_options = Options()
@@ -80,16 +75,23 @@ print(f" SCRAPING COMPLETADO - {len(todos_los_productos)} PRODUCTOS ENCONTRADOS 
 print("="*50 + Fore.RESET)
 
 # 3. Procesar cada producto con Tiendanube
-respuesta = input(Fore.CYAN + "\n¿Deseas proceder con la subida de productos a Tiendanube? (s/n): " + Fore.RESET).lower()
+try:
+    respuesta = inputimeout(
+        prompt=Fore.CYAN + "\n¿Deseas proceder con la subida de productos a Tiendanube? (s/n) [Timeout 5s]: " + Fore.RESET,
+        timeout=5
+    ).lower()
+except TimeoutOccurred:
+    respuesta = 's'  # Respuesta por defecto si se agota el tiempo
+    print(Fore.YELLOW + "\nTiempo agotado. Continuando con la subida automática..." + Style.RESET_ALL)
 
-if respuesta == 's':
-    print(Fore.YELLOW + "\nIniciando proceso de subida a Tiendanube..." + Fore.RESET)
+if respuesta in ['s', '']:  # Considerar Enter o timeout como 's'
+    print(Fore.YELLOW + "\nIniciando proceso de subida a Tiendanube..." + Style.RESET_ALL)
     import subprocess
     try:
         subprocess.run(['python', 'subida_tienda.py'], check=True)
     except subprocess.CalledProcessError as e:
-        print(Fore.RED + f"\nError al ejecutar subida_tienda.py: {e}" + Fore.RESET)
+        print(Fore.RED + f"\nError al ejecutar subida_tienda.py: {e}" + Style.RESET)
     except FileNotFoundError:
-        print(Fore.RED + "\nError: No se encontró el archivo subida_tienda.py" + Fore.RESET)
+        print(Fore.RED + "\nError: No se encontró el archivo subida_tienda.py" + Style.RESET)
 else:
-    print(Fore.YELLOW + "\nProceso de subida cancelado. Los datos del scraping están guardados y puedes ejecutar subida_tienda.py más tarde." + Fore.RESET)
+    print(Fore.YELLOW + "\nProceso de subida cancelado. Los datos del scraping están guardados y puedes ejecutar subida_tienda.py más tarde." + Style.RESET)

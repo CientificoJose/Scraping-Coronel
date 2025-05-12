@@ -9,18 +9,10 @@ from urllib.parse import urlparse
 import openpyxl
 import sqlite3
 from contextlib import closing
+from config import DOWNLOAD_IMAGES, set_download_images
 
-# Variables globales
-global DB_PATH
-global DOWNLOAD_IMAGES
 
-# Variable global para control de descarga de imágenes
-DOWNLOAD_IMAGES = True  # Por defecto True
 
-def set_download_images(value):
-    """Función para cambiar el estado de descarga de imágenes"""
-    global DOWNLOAD_IMAGES
-    DOWNLOAD_IMAGES = value
 
 def obtener_codigo_barra(code, db_path):
     """Consulta rápida a SQLite"""

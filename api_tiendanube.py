@@ -7,7 +7,9 @@ from functools import wraps
 import os
 import json
 from tqdm import tqdm
+import base64
 from app.deepseek import obtener_dimensiones_producto
+from config import DOWNLOAD_IMAGES
 
 # Variables necesarias
 ACCESS_TOKEN = "cdcad052f53bae4972979dbf6900925d4e9a36dc"  # Tu token de acceso obtenido
@@ -48,6 +50,42 @@ def save_cache():
     except Exception as e:
         print(Fore.YELLOW + f"Error guardando caché: {e}" + Style.RESET_ALL)
 
+
+def handle_imagenes_producto(producto):
+    global DOWNLOAD_IMAGES
+    """Maneja imágenes locales o remotas según DOWNLOAD_IMAGES"""
+    if DOWNLOAD_IMAGES:
+        return [subir_imagen_local(producto.get('imagen_local'))] if producto.get('imagen_local') else []
+    else:
+        return [{"src": producto['imagen_url']}] if producto.get('imagen_url') else []
+
+def subir_imagen_local(ruta_relativa):
+    """Sube imagen desde la carpeta del proyecto y devuelve objeto para API"""
+    try:
+        # Construir ruta absoluta
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        ruta_absoluta = os.path.join(base_dir, ruta_relativa)
+        
+        # Verificar existencia
+        if not os.path.exists(ruta_absoluta):
+            print(Fore.RED + f"Imagen no encontrada: {ruta_absoluta}" + Style.RESET_ALL)
+            return None
+            
+        # Leer y codificar imagen
+        with open(ruta_absoluta, "rb") as image_file:
+            encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # Estructura requerida por Tiendanube
+        return {
+            "attachment": encoded_image,
+            "filename": os.path.basename(ruta_absoluta),
+            "content_type": f"image/{os.path.splitext(ruta_absoluta)[1][1:].lower()}"
+        }
+        
+    except Exception as e:
+        print(Fore.RED + f"Error subiendo imagen local: {str(e)}" + Style.RESET_ALL)
+        return None
+
 # Decorador para medir el tiempo de ejecución de las funciones
 def medir_tiempo(func):
     @wraps(func)
@@ -60,57 +98,69 @@ def medir_tiempo(func):
     return wrapper
 
 #@medir_tiempo
-def buscar_id_categoria(nombre_categoria):
-    """Busca una categoría por nombre exacto o parcial"""
+def buscar_id_categoria(nombre, parent_id=None):
+    """Busca categoría por nombre y parent_id específico"""
     categorias = obtener_categorias_tienda()
-    nombre_categoria = nombre_categoria.lower().strip()
+    nombre = nombre.strip().lower()
     
-    # Primero intentar búsqueda exacta
+    # Primero buscar coincidencia exacta con parent_id
     for cat in categorias:
-        if cat['nombre'].lower().strip() == nombre_categoria:
-            return cat['id']
+        cat_nombre = cat['nombre'].lower().strip()
+        cat_parent_id = cat.get('parent_id')
+        
+        if cat_nombre == nombre:
+            if parent_id is None and cat_parent_id is None:
+                return cat['id']
+            elif parent_id is not None and cat_parent_id == parent_id:
+                return cat['id']
     
-    # Si no se encuentra exacta, intentar búsqueda parcial
-    for cat in categorias:
-        if nombre_categoria in cat['nombre'].lower().strip():
-            return cat['id']
+    # Si no se encuentra con parent_id exacto, buscar solo por nombre
+    if parent_id is not None:
+        for cat in categorias:
+            if cat['nombre'].lower().strip() == nombre:
+                return cat['id']
     
     return None
 
 #@medir_tiempo
 def obtener_ids_categorias(producto):
-    """Obtiene IDs de categorías en formato [id1, id2, id3]"""
+    """Obtiene IDs de categorías en formato [id1, id2, id3] con soporte para subcategorías anidadas"""
     
-    # Verificar si el producto ya está en la caché
     if producto['codigo'] in cache_ids_categorias:
         return cache_ids_categorias[producto['codigo']]
+    
+    ids = []
     try:
-        ids = []
         
-        # 1. Obtener categoría principal
-        if producto.get('categoria'):
-            categoria_id = buscar_id_categoria(producto['categoria'])
-            if categoria_id is None:  # Solo crear si realmente no existe
-                categoria_id = crear_categoria(producto['categoria'])
+        categoria_principal = producto['categoria'].strip()
+        if categoria_principal:
+            categoria_id = buscar_id_categoria(categoria_principal)
+            if not categoria_id:
+                categoria_id = crear_categoria(categoria_principal)
             
             if categoria_id:
                 ids.append(categoria_id)
+                parent_id = categoria_id  # Padre inicial
                 
-                # 2. Procesar subcategorías
+                # Procesar subcategorías anidadas
                 if producto.get('subcategoria'):
-                    for subcat in producto['subcategoria'].split(','):
-                        subcat = subcat.strip()
-                        if subcat:
-                            subcat_id = buscar_id_categoria(subcat)
-                            if subcat_id is None:  # Solo crear si realmente no existe
-                                subcat_id = crear_categoria(subcat, categoria_id)
-                            if subcat_id:
-                                ids.append(subcat_id)
-        
-        # Almacenar en caché
+                    subcategorias = [s.strip() for s in producto['subcategoria'].split(',') if s.strip()]
+                    
+                    for subcat in subcategorias:
+                        # Buscar bajo el padre actual
+                        subcat_id = buscar_id_categoria(subcat, parent_id)
+                        if not subcat_id:
+                            subcat_id = crear_categoria(subcat, parent_id)
+                        
+                        if subcat_id:
+                            ids.append(subcat_id)
+                            parent_id = subcat_id  # Actualizar padre para la próxima subcategoría
+                        else:
+                            break  # Si falla una, detener la cadena
+    
         cache_ids_categorias[producto['codigo']] = ids if ids else None
-        return ids if ids else None
-        
+        return ids
+    
     except Exception as e:
         print(Fore.RED + f"Error obteniendo IDs de categorías: {str(e)}" + Style.RESET_ALL)
         return None
@@ -159,7 +209,7 @@ def crear_producto(producto, PATH):
                 "depth": profundidad_cm
             }],
             "published": True,
-            "images": [{"src": producto['imagen_url']}] if producto.get('imagen_url') else [],
+            "images": handle_imagenes_producto(producto),
             "categories": obtener_ids_categorias(producto)
         }
         
@@ -182,32 +232,117 @@ def crear_producto(producto, PATH):
 #@medir_tiempo
 def crear_categoria(nombre, parent_id=None):
     """Crea categoría con estructura compatible"""
-    global cache_categorias  # Declaramos que usaremos la variable global
     try:
+        # Validación básica del nombre
+        if not nombre or not isinstance(nombre, str):
+            print(Fore.RED + "Error: Nombre de categoría inválido" + Style.RESET_ALL)
+            return None
+            
+        nombre = nombre.strip()
+        if not nombre:
+            print(Fore.RED + "Error: El nombre no puede estar vacío" + Style.RESET_ALL)
+            return None
+
+        # Verificar si la categoría ya existe
+        categoria_id = buscar_id_categoria(nombre, parent_id)
+        if categoria_id:
+            print(Fore.YELLOW + f"Categoría '{nombre}' ya existe con ID: {categoria_id}" + Style.RESET_ALL)
+            return categoria_id
+
+        # Construir payload
         payload = {
-            "name": nombre,
-            "parent": parent_id
+            "name": {
+                "es": nombre
+            }
         }
+        
+        # Solo agregar parent si existe
+        if parent_id is not None:
+            if not isinstance(parent_id, int):
+                print(Fore.RED + f"Error: parent_id debe ser entero (recibido {type(parent_id)})" + Style.RESET_ALL)
+                return None
+            payload["parent"] = parent_id
+
+        #print(Fore.CYAN + f"Creando categoría: {nombre} (parent_id: {parent_id})" + Style.RESET_ALL)
         
         response = requests.post(
             f"{BASE_URL}/categories",
             headers=headers,
-            json=payload
+            json=payload,
+            timeout=10
         )
-        response.raise_for_status()
-        categoria_id = response.json().get('id')
         
-        # Actualizar la caché después de crear una nueva categoría
-        save_cache()  # Guardar la caché actualizada
-        cache_categorias = {}  # Forzar recarga de categorías
+        response_data = response.json()
         
+        if response.status_code not in [200, 201]:
+            print(Fore.RED + f"Error HTTP {response.status_code}: {response_data}" + Style.RESET_ALL)
+            return None
+            
+        if 'id' not in response_data:
+            print(Fore.RED + f"Respuesta API inesperada: {response_data}" + Style.RESET_ALL)
+            return None
+
+        # Limpiar caché
+        if 'categorias' in cache_categorias:
+            del cache_categorias['categorias']
+        
+        categoria_id = response_data['id']
+        #print(Fore.GREEN + f"Categoría '{nombre}' creada con ID: {categoria_id}" + Style.RESET_ALL)
         return categoria_id
         
     except Exception as e:
-        print(Fore.RED + f"Error creando categoría {nombre}: {str(e)}" + Style.RESET_ALL)
-        if hasattr(e, 'response') and e.response:
-            print(Fore.RED + f"Respuesta: {e.response.text}" + Style.RESET_ALL)
+        print(Fore.RED + f"Error crítico: {type(e).__name__} - {str(e)}" + Style.RESET_ALL)
         return None
+
+#@medir_tiempo
+def obtener_categorias_tienda():
+    """Obtiene todas las categorías de la tienda con sus IDs"""
+    try:
+        headers = {
+            "Authentication": f"bearer {ACCESS_TOKEN}",
+            "User-Agent": "JG-STORE (jgstore244@gmail.com)"
+        }
+        
+        categorias = []
+        page = 1
+        per_page = 200  # Máximo permitido por la API
+        
+        while True:
+            url = f"https://api.tiendanube.com/v1/{STORE_ID}/categories?page={page}&per_page={per_page}"
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            
+            categorias_pagina = response.json()
+            if not categorias_pagina:
+                break
+                
+            for cat in categorias_pagina:
+                categoria = {
+                    "id": cat['id'],
+                    "nombre": cat['name']['es'] if 'es' in cat['name'] else cat['name']['pt'],
+                    "parent_id": None
+                }
+                
+                if 'parent' in cat and cat['parent']:
+                    if isinstance(cat['parent'], dict):
+                        categoria['parent_id'] = cat['parent'].get('id')
+                    else:
+                        categoria['parent_id'] = cat['parent']
+                
+                categorias.append(categoria)
+            
+            if len(categorias_pagina) < per_page:
+                break
+                
+            page += 1
+        
+        # Almacenar en caché
+        cache_categorias['categorias'] = categorias
+        return categorias
+        
+    except Exception as e:
+        print(Fore.RED + f"Error obteniendo categorías: {str(e)}" + Fore.RESET)
+        return []
 
 #@medir_tiempo
 def agregar_imagen(producto_id, imagen_url):
@@ -297,8 +432,6 @@ def actualizar_producto(producto_id, producto):
         print(Fore.RED + f"Error inesperado actualizando producto: {type(e).__name__} - {str(e)}" + Style.RESET_ALL)
         return False
     
-
-
 #@medir_tiempo
 def buscar_producto_por_sku(sku):
     """Busca un producto por SKU usando caché de páginas completas"""
@@ -358,52 +491,6 @@ def buscar_producto_por_sku(sku):
     finally:
         if pbar:  # Cerrar la barra si existe
             pbar.close()
-#@medir_tiempo
-def obtener_categorias_tienda():
-    """Obtiene todas las categorías de la tienda con sus IDs"""
-    # Verificar si las categorías ya están en la caché
-    if 'categorias' in cache_categorias:
-        return cache_categorias['categorias']
-    try:
-        headers = {
-            "Authentication": f"bearer {ACCESS_TOKEN}",
-            "User-Agent": "JG-STORE (jgstore244@gmail.com)"
-        }
-        
-        categorias = []
-        page = 1
-        per_page = 200  # Máximo permitido por la API
-        
-        while True:
-            url = f"https://api.tiendanube.com/v1/{STORE_ID}/categories?page={page}&per_page={per_page}"
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-            
-            categorias_pagina = response.json()
-            if not categorias_pagina:
-                break
-                
-            categorias.extend([
-                {
-                    "id": cat['id'],
-                    "nombre": cat['name']['es'] if 'es' in cat['name'] else cat['name']['pt'],
-                    "handle": cat['handle']['es'] if 'es' in cat['handle'] else cat['handle']['pt']
-                }
-                for cat in categorias_pagina
-            ])
-            
-            if len(categorias_pagina) < per_page:
-                break
-                
-            page += 1
-        
-        # Almacenar en caché
-        cache_categorias['categorias'] = categorias
-        return categorias
-        
-    except Exception as e:
-        print(Fore.RED + f"Error obteniendo categorías: {str(e)}" + Fore.RESET)
-        return []
 
 #@medir_tiempo
 def obtener_id_variante(producto_id):
