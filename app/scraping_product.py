@@ -227,16 +227,32 @@ def scraping_product(driver):
             
             # Esperar a que la página de detalle cargue completamente
             WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "sintachar"))
+                EC.presence_of_element_located((By.CLASS_NAME, "precios"))
             )
             
             # Extraer información de la página de detalle
             try:
-                price = driver.find_element(By.CLASS_NAME, "sintachar").text.strip()
-            except:
-                price = driver.find_element(By.CLASS_NAME, "tachado").text.strip()
+                # Primero intentamos encontrar el precio sin tachar
+                sintachar_element = driver.find_element(By.CLASS_NAME, "sintachar")
+                if sintachar_element and sintachar_element.text.strip():
+                    price = sintachar_element.text.strip()
+                else:
+                    # Si no hay precio sin tachar o está vacío, buscamos el tachado
+                    price = driver.find_element(By.CLASS_NAME, "tachado").text.strip()
+            except Exception as e:
+                # Si no se encuentra ninguno de los dos precios, intentamos otras alternativas
+                try:
+                    price = driver.find_element(By.CLASS_NAME, "precios").text.strip()
+                except:
+                    print("No se pudo encontrar el precio para el producto")
+                    price = "0"  # Valor por defecto si no se encuentra ningún precio
             
-            code = driver.find_element(By.CLASS_NAME, "codigo").text.replace("Código: ", "")
+            try:
+                code = driver.find_element(By.CLASS_NAME, "codigo").text.replace("Código: ", "")
+            except Exception as e:
+                print(f"Error al extraer código: {e}")
+                code = ""
+            
             description = driver.find_element(By.CLASS_NAME, "description").text
             
             # Extraer categorías

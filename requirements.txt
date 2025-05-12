@@ -5,3 +5,5 @@ pandas>=2.0.3
 requests>=2.31.0
 inputimeout>=1.0.4
 python-dotenv>=1.0.0
+openai>=1.0.0
+# sqlite3 viene incluido con Python por defecto
