@@ -50,6 +50,35 @@ def save_cache():
     except Exception as e:
         print(Fore.YELLOW + f"Error guardando caché: {e}" + Style.RESET_ALL)
 
+def manejar_rate_limiting(func, max_retries=5, initial_delay=1):
+    """
+    Decorador para manejar errores 429 con reintentos exponenciales
+    
+    Args:
+        func: Función a decorar
+        max_retries: Máximo número de reintentos
+        initial_delay: Delay inicial en segundos
+    """
+    def wrapper(*args, **kwargs):
+        retries = 0
+        delay = initial_delay
+        
+        while retries < max_retries:
+            try:
+                return func(*args, **kwargs)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:  # Too Many Requests
+                    print(Fore.YELLOW + f"Rate limit alcanzado. Reintentando en {delay} segundos..." + Style.RESET_ALL)
+                    time.sleep(delay)
+                    delay *= 2  # Backoff exponencial
+                    retries += 1
+                else:
+                    raise
+        
+        raise Exception(f"Máximo de reintentos ({max_retries}) alcanzado")
+    
+    return wrapper
+
 
 def handle_imagenes_producto(producto):
     global DOWNLOAD_IMAGES
@@ -102,6 +131,7 @@ def buscar_id_categoria(nombre, parent_id=None):
     """Busca categoría por nombre y parent_id específico"""
     categorias = obtener_categorias_tienda()
     nombre = nombre.strip().lower()
+    #print( "NOMBRE - buscar_id_categoria: "+nombre)
     
     # Primero buscar coincidencia exacta con parent_id
     for cat in categorias:
@@ -295,8 +325,13 @@ def crear_categoria(nombre, parent_id=None):
         return None
 
 #@medir_tiempo
+@manejar_rate_limiting
 def obtener_categorias_tienda():
     """Obtiene todas las categorías de la tienda con sus IDs"""
+    # Verificar si hay datos en caché
+    if 'categorias' in cache_categorias and cache_categorias['categorias']:
+        return cache_categorias['categorias']
+        
     try:
         headers = {
             "Authentication": f"bearer {ACCESS_TOKEN}",
@@ -524,34 +559,6 @@ def limpiar_cache_productos():
         print(Fore.RED + f"Error limpiando caché: {str(e)}" + Style.RESET_ALL)
 
 # Función para manejar rate limiting con backoff exponencial
-def manejar_rate_limiting(func, max_retries=5, initial_delay=1):
-    """
-    Decorador para manejar errores 429 con reintentos exponenciales
-    
-    Args:
-        func: Función a decorar
-        max_retries: Máximo número de reintentos
-        initial_delay: Delay inicial en segundos
-    """
-    def wrapper(*args, **kwargs):
-        retries = 0
-        delay = initial_delay
-        
-        while retries < max_retries:
-            try:
-                return func(*args, **kwargs)
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 429:  # Too Many Requests
-                    print(Fore.YELLOW + f"Rate limit alcanzado. Reintentando en {delay} segundos..." + Style.RESET_ALL)
-                    time.sleep(delay)
-                    delay *= 2  # Backoff exponencial
-                    retries += 1
-                else:
-                    raise
-        
-        raise Exception(f"Máximo de reintentos ({max_retries}) alcanzado")
-    
-    return wrapper
 
 @manejar_rate_limiting
 #@medir_tiempo

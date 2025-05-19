@@ -10,6 +10,7 @@ import openpyxl
 import sqlite3
 from contextlib import closing
 from config import DOWNLOAD_IMAGES, set_download_images
+from colorama import Fore, Style    
 
 
 
@@ -181,7 +182,7 @@ def consolidar_todo_en_base_de_datos(todos_los_productos):
         print(f"Error consolidando productos en SQLite: {str(e)}")
         return False
     
-def scraping_product(driver):
+def scraping_product(driver, max_retries=3, wait_time=10):
     """
     Extrae información de productos y descarga sus imágenes
     """
@@ -270,13 +271,18 @@ def scraping_product(driver):
                 adicional_element = driver.find_element(By.CLASS_NAME, "adicional")
                 adicional_text = adicional_element.text.strip()
                 if adicional_text:
-                    variant = adicional_text.upper().replace(' ', '')
+                    # Sanitizar la variante eliminando espacios y caracteres problemáticos
+                    variant = adicional_text.upper()
+                    variant = variant.replace(' ', '').replace('/', '-').replace('\\', '-')
                     code += f"-{variant}"
             except:
                 pass
             
-            # Extraer imagen
-            image_url = driver.find_element(By.CLASS_NAME, "ngxImageZoomThumbnail").get_attribute("src")
+            # Extraer imagen con espera explícita
+            image_element = WebDriverWait(driver, wait_time).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "ngxImageZoomThumbnail"))
+            )
+            image_url = image_element.get_attribute("src")
             
             # Preparar nombre de imagen
             img_name = f"{code}.jpg"
@@ -293,7 +299,8 @@ def scraping_product(driver):
             # Obtener código de barras si existe Excel
             codigo_barra = obtener_codigo_barra(code, scraping_product.db_path) if scraping_product.db_path else ""
             
-            products.append({
+            # Agregar producto a la lista
+            product_data = {
                 'codigo': code,
                 'descripcion': description,
                 'precio': price,
@@ -303,15 +310,43 @@ def scraping_product(driver):
                 'codigo_de_barras': codigo_barra,
                 "categoria": categoria_principal,
                 "subcategoria": subcategoria
-            })
+            }
+            products.append(product_data)
+            
+            # Mostrar progreso con formato bonito
+            print(f"\n{Fore.GREEN}⚡ Procesando producto {index + 1}/{len(product_elements)} {Style.RESET_ALL}")
+            print(f"{Fore.CYAN}🔍 Código: {Style.RESET_ALL}{code}")
+            print(f"{Fore.YELLOW}📝 Descripción: {Style.RESET_ALL}{description}")
+            print(f"{Fore.BLUE}💰 Precio: {Style.RESET_ALL}{price}")
+            print(f"{Fore.MAGENTA}🏷️ Categoría: {Style.RESET_ALL}{categoria_principal}")
+            if subcategoria:
+                print(f"{Fore.MAGENTA}🏷️ Subcategoría: {Style.RESET_ALL}{subcategoria}")
+            if variant:
+                print(f"{Fore.CYAN}🎨 Variante: {Style.RESET_ALL}{variant}")
+            if codigo_barra:
+                print(f"{Fore.GREEN}🔍 Código de Barras: {Style.RESET_ALL}{codigo_barra}")
+            print(f"{Fore.GREEN}✅ Url Imagen: {Style.RESET_ALL}{img_name if DOWNLOAD_IMAGES else 'No descargada'}")
+            print("-" * 50)
+            print(f"{Fore.WHITE}⏳ Esperando carga de la página... {Style.RESET_ALL}")
             
             # Regresar a la página de listado
             driver.back()
             
-            # Esperar a que los productos vuelvan a cargar
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "itemsBlock"))
-            )
+            # Esperar a que los productos vuelvan a cargar con reintento
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    WebDriverWait(driver, wait_time).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, "itemsBlock"))
+                    )
+                    break
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count == max_retries:
+                        print(f"Error después de {max_retries} intentos: {e}")
+                        raise
+                    print(f"Reintentando carga de página ({retry_count}/{max_retries})...")
+                    time.sleep(2)
             
         except Exception as e:
             print(f"Error al extraer producto: {e}")

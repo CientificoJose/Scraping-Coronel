@@ -120,6 +120,8 @@ def login(driver, show_button=True):
         ))
         cuit_field.clear()
         cuit_field.send_keys('27958596508')
+        #cuit_field.send_keys('96968817')
+        #27958596508
         
         # 3. Ingresar contraseña
         password_field = wait.until(EC.element_to_be_clickable(
@@ -127,6 +129,8 @@ def login(driver, show_button=True):
         ))
         password_field.clear()
         password_field.send_keys('95859650')
+        #password_field.send_keys('12180824')
+        #95859650
         
         # 4. Click en Ingresar
         login_button = wait.until(EC.element_to_be_clickable(

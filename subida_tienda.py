@@ -81,6 +81,8 @@ for i, producto in enumerate(todos_los_productos[:3], 1):
 
 print(Fore.GREEN + "\n" + "="*50)
 print(f" FIN DEL LISTADO - {len(todos_los_productos)} PRODUCTOS ")
+
+
 print("="*50 + Fore.RESET)
 
 def procesar_producto(producto):
