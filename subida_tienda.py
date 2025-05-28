@@ -5,18 +5,41 @@ import json
 import time
 import os
 from config import preguntar_download
+import sys
 
 
 
 # Limpiar caché
 limpiar_cache_productos()
 
-# Preguntar al usuario si desea descargar imágenes
-preguntar_download() 
-
 # Rutas
 global PATH
 PATH = os.path.join(os.path.dirname(__file__), 'productos.db')
+global GANANCIA_PORCENTAJE
+global DOWNLOAD_IMAGES
+
+# Manejo de argumentos
+default_download = 'f'  # Valor por defecto para descarga de imágenes
+
+if len(sys.argv) > 1:
+    try:
+        GANANCIA_PORCENTAJE = int(sys.argv[1])  # Convertir a entero aquí
+        if len(sys.argv) > 2:
+            DOWNLOAD_IMAGES = sys.argv[2].lower()
+            if DOWNLOAD_IMAGES not in ['t', 'f']:
+                DOWNLOAD_IMAGES = default_download
+        else:
+            DOWNLOAD_IMAGES = default_download
+    except ValueError:
+        print("Error: El primer argumento debe ser un número entero válido")
+        GANANCIA_PORCENTAJE = int(input("Ingrese la ganancia porcentaje (entero): "))
+        DOWNLOAD_IMAGES = input("¿Descargar imágenes? (t/f): ").lower() or default_download
+else:
+    GANANCIA_PORCENTAJE = int(input("Ingrese la ganancia porcentaje (entero): "))
+    DOWNLOAD_IMAGES = input("¿Descargar imágenes? (t/f): ").lower() or default_download
+
+print(f"Se ingresó {GANANCIA_PORCENTAJE}% como ganancia porcentaje")
+print(f"Descarga de imágenes: {'Activada' if DOWNLOAD_IMAGES == 't' else 'Desactivada'}")
 
 def obtener_productos_de_db():
     # Conectar a la base de datos
@@ -91,10 +114,10 @@ def procesar_producto(producto):
         start = time.time()
         
         if producto_id:
-            result = actualizar_producto(producto_id, producto)
+            result = actualizar_producto(producto_id, producto, GANANCIA_PORCENTAJE)
             tipo = 'actualizado'
         else:
-            result = crear_producto(producto, PATH)
+            result = crear_producto(producto, PATH, GANANCIA_PORCENTAJE)
             tipo = 'creado'
             
         elapsed = time.time() - start

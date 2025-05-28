@@ -81,9 +81,8 @@ def manejar_rate_limiting(func, max_retries=5, initial_delay=1):
 
 
 def handle_imagenes_producto(producto):
-    global DOWNLOAD_IMAGES
     """Maneja imágenes locales o remotas según DOWNLOAD_IMAGES"""
-    if DOWNLOAD_IMAGES:
+    if DOWNLOAD_IMAGES == 't':
         return [subir_imagen_local(producto.get('imagen_local'))] if producto.get('imagen_local') else []
     else:
         return [{"src": producto['imagen_url']}] if producto.get('imagen_url') else []
@@ -137,17 +136,13 @@ def buscar_id_categoria(nombre, parent_id=None):
     for cat in categorias:
         cat_nombre = cat['nombre'].lower().strip()
         cat_parent_id = cat.get('parent_id')
+
+        
         
         if cat_nombre == nombre:
             if parent_id is None and cat_parent_id is None:
                 return cat['id']
             elif parent_id is not None and cat_parent_id == parent_id:
-                return cat['id']
-    
-    # Si no se encuentra con parent_id exacto, buscar solo por nombre
-    if parent_id is not None:
-        for cat in categorias:
-            if cat['nombre'].lower().strip() == nombre:
                 return cat['id']
     
     return None
@@ -196,11 +191,11 @@ def obtener_ids_categorias(producto):
         return None
 
 #@medir_tiempo
-def crear_producto(producto, PATH):
+def crear_producto(producto, PATH, GANANCIA_PORCENTAJE):
     """Crea un nuevo producto manejando categorías existentes o nuevas"""
     # Formatear precio
     precio_str = producto['precio'].replace('$', '').replace('.', '').replace(',', '.')
-    precio = float(precio_str)*2
+    precio = float(precio_str) * (1 + GANANCIA_PORCENTAJE/100)
     
     categorias = producto['categoria'] + ', ' + producto['subcategoria']
         
@@ -372,7 +367,7 @@ def obtener_categorias_tienda():
             page += 1
         
         # Almacenar en caché
-        cache_categorias['categorias'] = categorias
+        cache_categorias['categorias'] = categorias  
         return categorias
         
     except Exception as e:
@@ -399,9 +394,30 @@ def actualizar_producto(producto_id, producto):
     """Actualiza un producto con manejo optimizado de categorías e imágenes"""
     try:
         # 1. Actualizar datos básicos (incluyendo categorías)
+        # Formatear precio
+        precio_str = producto['precio'].replace('$', '').replace('.', '').replace(',', '.')
+        precio = float(precio_str) * (1 + GANANCIA_PORCENTAJE/100)
+        
+        # 2. Elimina imágenes existentes
+        if producto.get('imagen_url'):
+            # Eliminar imágenes existentes
+            imagenes = requests.get(
+                f"{BASE_URL}/products/{producto_id}/images",
+                headers=headers
+            ).json()
+            
+            for img in imagenes:
+                requests.delete(
+                    f"{BASE_URL}/products/{producto_id}/images/{img['id']}",
+                    headers=headers
+                ).raise_for_status()
+        
         payload_base = {
             "name": producto['descripcion'],
-            "categories": obtener_ids_categorias(producto)
+            "categories": obtener_ids_categorias(producto),
+            "price": precio,
+            "images": handle_imagenes_producto(producto),
+            
         }
         
         response = requests.put(
@@ -411,7 +427,8 @@ def actualizar_producto(producto_id, producto):
         )
         response.raise_for_status()
         
-        # 2. Actualizar variante (requiere ID de variante)
+        
+        # 3. Actualiza variante (requiere ID de variante)
         variante_id = obtener_id_variante(producto_id)
         if variante_id:
             payload_variante = {
@@ -429,27 +446,8 @@ def actualizar_producto(producto_id, producto):
             )
             response.raise_for_status()
 
-         # 3. Actualizar imagen (elimina existentes y agrega nueva)
-        if producto.get('imagen_url'):
-            # Eliminar imágenes existentes
-            imagenes = requests.get(
-                f"{BASE_URL}/products/{producto_id}/images",
-                headers=headers
-            ).json()
-            
-            for img in imagenes:
-                requests.delete(
-                    f"{BASE_URL}/products/{producto_id}/images/{img['id']}",
-                    headers=headers
-                ).raise_for_status()
-            
-            # Agregar nueva imagen
-            response = requests.post(
-                f"{BASE_URL}/products/{producto_id}/images",
-                headers=headers,
-                json={"src": producto['imagen_url']}
-            )
-            response.raise_for_status()
+         
+
             
     
 
@@ -466,7 +464,7 @@ def actualizar_producto(producto_id, producto):
     except Exception as e:
         print(Fore.RED + f"Error inesperado actualizando producto: {type(e).__name__} - {str(e)}" + Style.RESET_ALL)
         return False
-    
+
 #@medir_tiempo
 def buscar_producto_por_sku(sku):
     """Busca un producto por SKU usando caché de páginas completas"""

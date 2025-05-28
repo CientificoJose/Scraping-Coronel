@@ -31,11 +31,15 @@ import pandas as pd
 import os
 import re
 import datetime
-
 from config import preguntar_download
+from config import preguntar_porcentaje
 
 # Preguntar al usuario si desea descargar imágenes
-preguntar_download() 
+DOWNLOAD_IMAGES = preguntar_download() 
+# Preguntar al usuario porcentaje
+GANANCIA_PORCENTAJE = preguntar_porcentaje()
+
+
 
 # Configurar opciones de Chrome
 chrome_options = Options()
@@ -87,8 +91,10 @@ except TimeoutOccurred:
 if respuesta in ['s', '']:  # Considerar Enter o timeout como 's'
     print(Fore.YELLOW + "\nIniciando proceso de subida a Tiendanube..." + Style.RESET_ALL)
     import subprocess
+    comando = ['python', 'subida_tienda.py', str(GANANCIA_PORCENTAJE), DOWNLOAD_IMAGES]
+    print(Fore.CYAN + "Ejecutando:", ' '.join(comando) + Style.RESET_ALL)
     try:
-        subprocess.run(['python', 'subida_tienda.py'], check=True)
+        subprocess.run(comando, check=True)
     except subprocess.CalledProcessError as e:
         print(Fore.RED + f"\nError al ejecutar subida_tienda.py: {e}" + Style.RESET)
     except FileNotFoundError:
