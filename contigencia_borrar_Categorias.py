@@ -54,7 +54,7 @@ def get_all_categories():
 
 def eliminar_categorias_duplicadas():
     """
-    Elimina las categorías duplicadas con el nombre 'LIBRERÍA'
+    Elimina las categorías duplicadas con el nombre 'JUGUETERIA'
     """
     try:
         # Obtener todas las categorías con paginación
@@ -65,10 +65,10 @@ def eliminar_categorias_duplicadas():
             name = cat.get('name', {}).get('es', '')
             print(f"  ID: {cat['id']} - Nombre: {name} - Productos: {cat.get('total_products', 0)}")
         
-        # Filtrar categorías que contengan 'LIBRERIA' o 'LIBRERÍA'
+        # Filtrar categorías que contengan 'LIBRERIA' o 'JUGUETERIA'
         libreria_categories = [cat for cat in categories 
-                              if 'LIBRERIA' in cat.get('name', {}).get('es', '').upper() or 
-                                 'LIBRERÍA' in cat.get('name', {}).get('es', '').upper()]
+                              if 'JUGUETERIA' in cat.get('name', {}).get('es', '').upper() or 
+                                 'JUGUETERIA' in cat.get('name', {}).get('es', '').upper()]
         total_found = len(libreria_categories)
         
         if total_found == 0:

@@ -114,10 +114,10 @@ def procesar_producto(producto):
         start = time.time()
         
         if producto_id:
-            result = actualizar_producto(producto_id, producto, GANANCIA_PORCENTAJE)
+            result = actualizar_producto(producto_id, producto, GANANCIA_PORCENTAJE, DOWNLOAD_IMAGES)
             tipo = 'actualizado'
         else:
-            result = crear_producto(producto, PATH, GANANCIA_PORCENTAJE)
+            result = crear_producto(producto, PATH, GANANCIA_PORCENTAJE, DOWNLOAD_IMAGES)
             tipo = 'creado'
             
         elapsed = time.time() - start
