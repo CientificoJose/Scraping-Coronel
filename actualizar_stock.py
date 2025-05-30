@@ -23,6 +23,7 @@ headers = {
     "User-Agent": "API-KEY (jgstore244@gmail.com)"
 }
 
+
 # Inicializar colorama
 init()
 
@@ -42,8 +43,9 @@ driver = webdriver.Chrome(options=chrome_options)
 
 def scraping_product(driver, max_retries=3, wait_time=10):
     """
-    Extrae información de productos y descarga sus imágenes
+    Extrae información de productos
     """
+    
     # Esperar a que carguen los productos
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.CLASS_NAME, "itemsBlock"))
@@ -57,13 +59,13 @@ def scraping_product(driver, max_retries=3, wait_time=10):
         categoria = breadcrumb.text.strip()
     except:
         categoria = ""
-        print(f"{Fore.RED}⚠️ No se pudo obtener la categoría{Style.RESET_ALL}")
+        #print(f"{Fore.RED}⚠️ No se pudo obtener la categoría{Style.RESET_ALL}")
     
     # Obtener todos los productos de una vez
     product_elements = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
     total_products = len(product_elements)
     
-    print(f"{Fore.CYAN}📦 Procesando {total_products} productos de la categoría: {categoria}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}📦 Procesando {total_products} productos{Style.RESET_ALL}")
     
     for index, product in enumerate(product_elements, 1):
         try:
@@ -103,7 +105,6 @@ def scraping_product(driver, max_retries=3, wait_time=10):
             # Mostrar progreso
             print(f"\n{Fore.GREEN}⚡ Producto {index}/{total_products}{Style.RESET_ALL}")
             print(f"{Fore.CYAN}🔍 Código: {Style.RESET_ALL}{code}")
-            print(f"{Fore.GREEN} Categoria: {Style.RESET_ALL}{categoria}")
             if variant:
                 print(f"{Fore.CYAN}🎨 Variante: {Style.RESET_ALL}{variant}")
             print("-" * 50)
@@ -116,16 +117,17 @@ def scraping_product(driver, max_retries=3, wait_time=10):
     # Return both products and category
     return products, categoria
 
-def update_tiendanube_stock(scraped_products, categoria):
+def update_tiendanube_stock(scraped_products):
     """
-    Actualiza el stock de los productos en Tienda Nube basado en los productos scrapeados
-    y la categoría especificada
+    Actualiza el stock de los productos en Tienda Nube basado en los productos scrapeados.
+    Si un producto existe en el scraping, se le asigna stock 999999, si no existe, stock 0.
     
     Args:
         scraped_products: Lista de productos obtenidos del scraping
-        categoria: Categoría de productos a actualizar
     """
-    print(Fore.CYAN + f"\nActualizando stock en Tienda Nube para la categoría '{categoria}'..." + Style.RESET_ALL)
+    
+    
+    print(Fore.CYAN + "\nActualizando stock en Tienda Nube..." + Style.RESET_ALL)
     
     try:
         # Obtener todos los productos de Tienda Nube usando paginación
@@ -168,21 +170,14 @@ def update_tiendanube_stock(scraped_products, categoria):
         scraped_codes = {p['codigo']: p for p in scraped_products}
         
         # Contador de actualizaciones
-        updates = {'infinito': 0, 'cero': 0, 'error': 0, 'omitidos': 0}
+        updates = {'infinito': 0, 'cero': 0, 'error': 0}
         
         # Actualizar stock de cada producto
         for tn_product in tiendanube_products:
-            # Verificar si el producto pertenece a la categoría especificada
-            product_categories = [cat.get('name', {}).get('es', '') for cat in tn_product.get('categories', [])]
-            if categoria not in product_categories:
-                updates['omitidos'] += 1
-                continue
-
             product_id = tn_product['id']
             product_name = tn_product.get('name', {}).get('es', 'Producto sin nombre')
             variants = tn_product.get('variants', [])
             
-            # Si el producto pertenece a la categoría, debemos procesarlo
             for variant in variants:
                 sku = variant.get('sku', '')
                 if not sku:
@@ -210,10 +205,9 @@ def update_tiendanube_stock(scraped_products, categoria):
                     updates['error'] += 1
         
         # Mostrar resumen
-        print(f"\n{Fore.GREEN}✅ Actualización de stock completada para la categoría '{categoria}':{Style.RESET_ALL}")
+        print(f"\n{Fore.GREEN}✅ Actualización de stock completada:{Style.RESET_ALL}")
         print(f"  • {Fore.GREEN}{updates['infinito']} productos con stock infinito{Style.RESET_ALL}")
         print(f"  • {Fore.YELLOW}{updates['cero']} productos con stock 0{Style.RESET_ALL}")
-        print(f"  • {Fore.BLUE}{updates['omitidos']} productos omitidos (otra categoría){Style.RESET_ALL}")
         if updates['error'] > 0:
             print(f"  • {Fore.RED}{updates['error']} errores de actualización{Style.RESET_ALL}")
             
@@ -230,6 +224,10 @@ def scraping_all_product(driver):
     Returns:
         Lista de productos encontrados
     """
+    print(Fore.YELLOW + "\nNavegando a la lista de precios..." + Fore.RESET)
+    driver.get("https://www.coronelmayorista.com/#/articulos?page=1&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
+    time.sleep(2)
+    
     all_products = []
     page_number = 1
     
@@ -267,6 +265,7 @@ def scraping_all_product(driver):
             break
     
     print(Fore.GREEN + f"\nSCRAPING COMPLETADO - {len(all_products)} productos encontrados" + Fore.RESET)
+    driver.quit()
     return all_products, categoria
 
 
@@ -280,9 +279,9 @@ if not login_result:
     exit(1)
 
 # Ejecutar scraping y actualización de stock
-products, categoria = scraping_all_product(driver)
+products, _ = scraping_all_product(driver)
 if products:
-    update_tiendanube_stock(products, categoria)
+    update_tiendanube_stock(products)
 
 # Cerrar el navegador
 driver.quit()

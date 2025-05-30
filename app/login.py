@@ -172,7 +172,7 @@ def login(driver, show_button=True):
                     time.sleep(0.1)
                 
                 # Continuar con scraping
-                wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'itemsBlock')))
+                #wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'itemsBlock')))
             
         except TimeoutException:
             print(Fore.RED + "✖ Error: No se ha iniciado sesión" + Fore.RESET)
