@@ -233,20 +233,21 @@ def scraping_product(driver, max_retries=3, wait_time=10):
             
             # Extraer información de la página de detalle
             try:
-                # Primero intentamos encontrar el precio sin tachar
-                sintachar_element = driver.find_element(By.CLASS_NAME, "sintachar")
-                if sintachar_element and sintachar_element.text.strip():
-                    price = sintachar_element.text.strip()
-                else:
-                    # Si no hay precio sin tachar o está vacío, buscamos el tachado
-                    price = driver.find_element(By.CLASS_NAME, "tachado").text.strip()
-            except Exception as e:
-                # Si no se encuentra ninguno de los dos precios, intentamos otras alternativas
+                
+                # Intentamos encontrar el precio tachado primero (producto en oferta)
                 try:
-                    price = driver.find_element(By.CLASS_NAME, "precios").text.strip()
+                    price = driver.find_element(By.CSS_SELECTOR, "span.tachado").text.strip()
                 except:
-                    print("No se pudo encontrar el precio para el producto")
-                    price = "0"  # Valor por defecto si no se encuentra ningún precio
+                    # Si no hay precio tachado, buscamos el precio sin tachar (producto sin oferta)
+                    try:
+                        price = driver.find_element(By.CSS_SELECTOR, "span.sintachar").text.strip()
+                    except:
+                        print("No se pudo encontrar el precio específico del producto")
+                        # Como último recurso, tomamos todo el texto del contenedor de precios
+                        price = "0"
+            except Exception as e:
+                print(f"Error al extraer el precio: {str(e)}")
+                price = "0"  # Valor por defecto si no se encuentra ningún precio
             
             try:
                 code = driver.find_element(By.CLASS_NAME, "codigo").text.replace("Código: ", "")

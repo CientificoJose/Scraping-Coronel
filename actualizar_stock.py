@@ -193,16 +193,36 @@ def update_tiendanube_stock(scraped_products):
                     print(f"{Fore.YELLOW}⚠️ Estableciendo stock 0 para {product_name} (SKU: {sku}){Style.RESET_ALL}")
                     updates['cero'] += 1
                 
-                # Actualizar stock en Tienda Nube
-                try:
-                    update_url = f"{BASE_URL}/products/{product_id}/variants/{variant['id']}"
-                    response = requests.put(update_url, headers=headers, json={'stock': new_stock})
-                    if response.status_code != 200:
-                        print(f"{Fore.RED}Error al actualizar {product_name} (SKU: {sku}): {response.text}{Style.RESET_ALL}")
-                        updates['error'] += 1
-                except Exception as e:
-                    print(f"{Fore.RED}Error al actualizar {product_name} (SKU: {sku}): {e}{Style.RESET_ALL}")
+                # Actualizar stock en Tienda Nube con reintentos
+                max_retries = 3
+                retry_delay = 2  # segundos iniciales de espera
+                success = False
+
+                for retry in range(max_retries):
+                    try:
+                        update_url = f"{BASE_URL}/products/{product_id}/variants/{variant['id']}"
+                        response = requests.put(update_url, headers=headers, json={'stock': new_stock})
+                        
+                        if response.status_code == 200:
+                            success = True
+                            break
+                        elif response.status_code == 429:  # Too Many Requests
+                            wait_time = retry_delay * (10 ** retry)  # Espera exponencial
+                            print(f"{Fore.YELLOW}⚠️ Rate limit alcanzado. Esperando {wait_time} segundos...{Style.RESET_ALL}")
+                            time.sleep(wait_time)
+                        else:
+                            print(f"{Fore.RED}Error al actualizar {product_name} (SKU: {sku}): {response.text}{Style.RESET_ALL}")
+                            time.sleep(1)  # Pequeña pausa entre reintentos
+                    except Exception as e:
+                        print(f"{Fore.RED}Error al actualizar {product_name} (SKU: {sku}): {e}{Style.RESET_ALL}")
+                        time.sleep(1)
+
+                if not success:
                     updates['error'] += 1
+                    print(f"{Fore.RED}❌ No se pudo actualizar {product_name} después de {max_retries} intentos{Style.RESET_ALL}")
+
+                # Pausa breve entre actualizaciones para evitar rate limits
+                time.sleep(0.5)
         
         # Mostrar resumen
         print(f"\n{Fore.GREEN}✅ Actualización de stock completada:{Style.RESET_ALL}")
