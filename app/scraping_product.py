@@ -260,11 +260,13 @@ def scraping_product(driver, max_retries=3, wait_time=10):
             # Extraer categorías
             breadcrumb = driver.find_element(By.CSS_SELECTOR, ".breadcrumb")
             categorias = [span.text.strip() for span in breadcrumb.find_elements(
-                    By.CSS_SELECTOR, ".breadcrumb-item.breadcrumb2"
-                ) if span.text.strip()]
-            
+                By.CSS_SELECTOR, ".breadcrumb-item.breadcrumb2"
+            ) if span.text.strip()]
+
             categoria_principal = categorias[0] if len(categorias) > 0 else None
-            subcategoria = ", ".join(categorias[1:]) if len(categorias) > 1 else ""
+            subcategoria = categorias[1] if len(categorias) > 1 else ""
+
+
             
             # Procesar variante
             variant = ""
