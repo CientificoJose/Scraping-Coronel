@@ -10,7 +10,11 @@ import openpyxl
 import sqlite3
 from contextlib import closing
 from config import DOWNLOAD_IMAGES, set_download_images
-from colorama import Fore, Style    
+from colorama import Fore, Style
+import urllib3
+
+# Desactivar advertencias de solicitud insegura para solicitudes sin verificación SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)    
 
 
 
@@ -293,7 +297,7 @@ def scraping_product(driver, max_retries=3, wait_time=10):
             
             # Descargar imagen solo si DOWNLOAD_IMAGES es True
             if DOWNLOAD_IMAGES:
-                response = requests.get(image_url, stream=True)
+                response = requests.get(image_url, stream=True, verify=False)
                 if response.status_code == 200:
                     with open(img_path, 'wb') as f:
                         for chunk in response.iter_content(1024):

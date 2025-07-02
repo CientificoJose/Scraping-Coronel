@@ -182,6 +182,11 @@ def update_tiendanube_stock(scraped_products):
                 sku = variant.get('sku', '')
                 if not sku:
                     continue
+
+                # Omitir productos con SKU que terminan en "-local"
+                if sku.endswith('-local'):
+                    print(f"{Fore.BLUE}ℹ️  Omitiendo producto local: {product_name} (SKU: {sku}){Style.RESET_ALL}")
+                    continue
                 
                 # Determinar el nuevo stock basado en si está en el scraping
                 if sku in scraped_codes:
