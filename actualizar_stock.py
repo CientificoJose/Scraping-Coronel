@@ -119,125 +119,109 @@ def scraping_product(driver, max_retries=3, wait_time=10):
 
 def update_tiendanube_stock(scraped_products):
     """
-    Actualiza el stock de los productos en Tienda Nube basado en los productos scrapeados.
-    Si un producto existe en el scraping, se le asigna stock 999999, si no existe, stock 0.
-    
-    Args:
-        scraped_products: Lista de productos obtenidos del scraping
+    Actualiza el stock y la visibilidad de los productos en Tienda Nube.
+    - Si un producto existe en el scraping, su stock se establece en 999999.
+    - Si no existe, su stock se establece en 0.
+    - Los productos cuyo SKU termina en '-local' se omiten.
+    - Un producto se oculta (published=False) si todas sus variantes tienen stock 0.
     """
-    
-    
-    print(Fore.CYAN + "\nActualizando stock en Tienda Nube..." + Style.RESET_ALL)
-    
+    print(Fore.CYAN + "\n🔄 Actualizando stock y visibilidad en Tienda Nube..." + Style.RESET_ALL)
+
     try:
-        # Obtener todos los productos de Tienda Nube usando paginación
+        # 1. Obtener todos los productos de Tienda Nube
         tiendanube_products = []
         page = 1
-        per_page = 200  # Máximo permitido por la API
-        
+        per_page = 200
         total_products = 0
         print("Obteniendo productos de Tienda Nube...")
-        
         while True:
-            # Crear barra de progreso
-            progress = f"[{'=' * (page % 10)}{' ' * (9 - (page % 10))}]" 
+            progress = f"[{'=' * (page % 10)}{' ' * (9 - (page % 10))}]"
             print(f"\r📦 Página {page} {progress} ({total_products} productos)", end='', flush=True)
-            
-            response = requests.get(
-                f"{BASE_URL}/products",
-                headers=headers,
-                params={'page': page, 'per_page': per_page}
-            )
+            response = requests.get(f"{BASE_URL}/products", headers=headers, params={'page': page, 'per_page': per_page})
             response.raise_for_status()
-            
             page_products = response.json()
-            if not page_products:  # Si no hay más productos, salimos del bucle
+            if not page_products:
                 break
-                
             tiendanube_products.extend(page_products)
             total_products += len(page_products)
-            
-            if len(page_products) < per_page:  # Si la página no está completa, es la última
+            if len(page_products) < per_page:
                 break
-                
             page += 1
-        
-        print()  # Nueva línea para separar del siguiente mensaje
-        
-        print(f"Total de productos obtenidos de Tienda Nube: {len(tiendanube_products)}")
-        
-        # Crear diccionario de productos scrapeados para búsqueda rápida
+        print(f"\nTotal de productos obtenidos: {len(tiendanube_products)}")
+
+        # 2. Preparar datos y contadores
         scraped_codes = {p['codigo']: p for p in scraped_products}
-        
-        # Contador de actualizaciones
-        updates = {'infinito': 0, 'cero': 0, 'error': 0}
-        
-        # Actualizar stock de cada producto
+        updates = {'infinito': 0, 'cero': 0, 'visibles': 0, 'ocultos': 0, 'error': 0}
+
+        # 3. Procesar cada producto
         for tn_product in tiendanube_products:
             product_id = tn_product['id']
-            product_name = tn_product.get('name', {}).get('es', 'Producto sin nombre')
+            product_name = tn_product.get('name', {}).get('es', 'Sin nombre')
             variants = tn_product.get('variants', [])
+            product_published = tn_product.get('published', True)
             
+            product_has_stock = False
+
+            # Actualizar stock de variantes
             for variant in variants:
                 sku = variant.get('sku', '')
                 if not sku:
                     continue
 
-                # Omitir productos con SKU que terminan en "-local"
                 if sku.endswith('-local'):
                     print(f"{Fore.BLUE}ℹ️  Omitiendo producto local: {product_name} (SKU: {sku}){Style.RESET_ALL}")
+                    product_has_stock = True  # Asumimos que los locales siempre tienen stock para la visibilidad
                     continue
-                
-                # Determinar el nuevo stock basado en si está en el scraping
-                if sku in scraped_codes:
-                    new_stock = 999999
-                    print(f"{Fore.GREEN}✓ Manteniendo stock del producto {product_name} (SKU: {sku}){Style.RESET_ALL}")
+
+                new_stock = 999999 if sku in scraped_codes else 0
+                if new_stock > 0:
+                    product_has_stock = True
                     updates['infinito'] += 1
+                    print(f"{Fore.GREEN}✓ Stock infinito para {product_name} (SKU: {sku}){Style.RESET_ALL}")
                 else:
-                    new_stock = 0
-                    print(f"{Fore.YELLOW}⚠️ Estableciendo stock 0 para {product_name} (SKU: {sku}){Style.RESET_ALL}")
                     updates['cero'] += 1
+                    print(f"{Fore.YELLOW}⚠️ Stock 0 para {product_name} (SKU: {sku}){Style.RESET_ALL}")
                 
-                # Actualizar stock en Tienda Nube con reintentos
-                max_retries = 3
-                retry_delay = 2  # segundos iniciales de espera
-                success = False
-
-                for retry in range(max_retries):
-                    try:
-                        update_url = f"{BASE_URL}/products/{product_id}/variants/{variant['id']}"
-                        response = requests.put(update_url, headers=headers, json={'stock': new_stock})
-                        
-                        if response.status_code == 200:
-                            success = True
-                            break
-                        elif response.status_code == 429:  # Too Many Requests
-                            wait_time = retry_delay * (10 ** retry)  # Espera exponencial
-                            print(f"{Fore.YELLOW}⚠️ Rate limit alcanzado. Esperando {wait_time} segundos...{Style.RESET_ALL}")
-                            time.sleep(wait_time)
-                        else:
-                            print(f"{Fore.RED}Error al actualizar {product_name} (SKU: {sku}): {response.text}{Style.RESET_ALL}")
-                            time.sleep(1)  # Pequeña pausa entre reintentos
-                    except Exception as e:
-                        print(f"{Fore.RED}Error al actualizar {product_name} (SKU: {sku}): {e}{Style.RESET_ALL}")
-                        time.sleep(1)
-
-                if not success:
+                # Actualizar stock en la API
+                try:
+                    update_url = f"{BASE_URL}/products/{product_id}/variants/{variant['id']}"
+                    response = requests.put(update_url, headers=headers, json={'stock': new_stock}, timeout=10)
+                    response.raise_for_status()
+                except requests.exceptions.RequestException as e:
                     updates['error'] += 1
-                    print(f"{Fore.RED}❌ No se pudo actualizar {product_name} después de {max_retries} intentos{Style.RESET_ALL}")
-
-                # Pausa breve entre actualizaciones para evitar rate limits
+                    print(f"{Fore.RED}❌ Error actualizando stock de {product_name} (SKU: {sku}): {e}{Style.RESET_ALL}")
                 time.sleep(0.5)
-        
-        # Mostrar resumen
-        print(f"\n{Fore.GREEN}✅ Actualización de stock completada:{Style.RESET_ALL}")
-        print(f"  • {Fore.GREEN}{updates['infinito']} productos con stock infinito{Style.RESET_ALL}")
-        print(f"  • {Fore.YELLOW}{updates['cero']} productos con stock 0{Style.RESET_ALL}")
+
+            # Actualizar visibilidad del producto principal
+            should_be_published = product_has_stock
+            if product_published != should_be_published:
+                try:
+                    update_url = f"{BASE_URL}/products/{product_id}"
+                    response = requests.put(update_url, headers=headers, json={'published': should_be_published}, timeout=10)
+                    response.raise_for_status()
+                    if should_be_published:
+                        updates['visibles'] += 1
+                        print(f"{Fore.GREEN}🟢 Producto '{product_name}' ahora visible.{Style.RESET_ALL}")
+                    else:
+                        updates['ocultos'] += 1
+                        print(f"{Fore.RED}🔴 Producto '{product_name}' ahora oculto.{Style.RESET_ALL}")
+                except requests.exceptions.RequestException as e:
+                    updates['error'] += 1
+                    print(f"{Fore.RED}❌ Error actualizando visibilidad de {product_name}: {e}{Style.RESET_ALL}")
+            else:
+                 print(f"{Fore.WHITE}⚪ Visibilidad de '{product_name}' no cambia.{Style.RESET_ALL}")
+
+        # 4. Mostrar resumen
+        print(f"\n{Fore.GREEN}✅ Actualización completada:{Style.RESET_ALL}")
+        print(f"  - {updates['infinito']} variantes con stock infinito.")
+        print(f"  - {updates['cero']} variantes con stock cero.")
+        print(f"  - {updates['visibles']} productos se hicieron visibles.")
+        print(f"  - {updates['ocultos']} productos se ocultaron.")
         if updates['error'] > 0:
-            print(f"  • {Fore.RED}{updates['error']} errores de actualización{Style.RESET_ALL}")
-            
+            print(f"  - {Fore.RED}{updates['error']} errores de actualización.{Style.RESET_ALL}")
+
     except Exception as e:
-        print(Fore.RED + f"Error al obtener productos de Tienda Nube: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Error general en la actualización: {e}" + Style.RESET_ALL)
 
 def scraping_all_product(driver):
     """

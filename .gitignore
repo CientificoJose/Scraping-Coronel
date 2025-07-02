@@ -13,3 +13,12 @@
 # Python cache
 *.py[cod]
 *$py.class
+
+
+# Archivos de Excel
+*.xlsx
+
+# Imagenes
+*.jpg
+*.png
+*.jpeg
