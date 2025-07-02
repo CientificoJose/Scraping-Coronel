@@ -1,9 +1,21 @@
-colorama>=0.4.6
-selenium>=4.10.0
-openpyxl>=3.1.2
-pandas>=2.0.3
-requests>=2.31.0
-inputimeout>=1.0.4
-python-dotenv>=1.0.0
-openai>=1.0.0
-# sqlite3 viene incluido con Python por defecto
+# Dependencias principales del proyecto
+
+selenium
+webdriver-manager # Para la gestión automática de ChromeDriver
+requests
+openpyxl # Para leer los archivos Excel de Coronel Mayorista
+colorama # Para logs coloridos en consola (aunque la GUI es el foco)
+tqdm # Para barras de progreso en consola (útil en pruebas de módulos core)
+python-dotenv # Para cargar el archivo .env con las credenciales
+ttkthemes # Para mejorar la apariencia de la GUI Tkinter (opcional pero recomendado)
+
+# Nota: Tkinter (para la GUI) usualmente viene incluido con la instalación estándar de Python,
+# por lo que no necesita listarse aquí.
+
+# Considerar añadir versiones específicas si es necesario para estabilidad, por ejemplo:
+# selenium==4.15.0
+# webdriver-manager==4.0.1
+# requests>=2.28.0,<3.0.0
+# openpyxl==3.1.2
+# python-dotenv==1.0.0
+# ttkthemes==3.2.2
