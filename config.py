@@ -24,22 +24,22 @@ def preguntar_download():
     thread = threading.Thread(target=input_thread)
     thread.daemon = True
     thread.start()
-    thread.join(timeout=5)
+    thread.join(timeout=1)
     
     if respuesta is None:
         print(Fore.YELLOW + "\nℹ Tiempo de espera agotado (5s), se asume NO descargar imágenes" + Style.RESET_ALL)
         set_download_images(False)
         print(Fore.CYAN + "="*50 + "\n" + Style.RESET_ALL)
-        return 'f'
+        return 't'
     
     set_download_images(respuesta == 's')
     if respuesta == 's':
         print(Fore.GREEN + "✔ Las imágenes se descargarán durante el proceso" + Style.RESET_ALL)
         return 't'
     else:
-        print(Fore.YELLOW + "ℹ Las imágenes NO se descargarán (se mantendrán las referencias)" + Style.RESET_ALL)
+        print(Fore.GREEN + "✔ Las imágenes se descargarán durante el proceso" + Style.RESET_ALL)
         print(Fore.CYAN + "="*50 + "\n" + Style.RESET_ALL)
-        return 'f'
+        return 't'
 
 def preguntar_porcentaje():
     # Preguntar al usuario el porcentaje de ganancia

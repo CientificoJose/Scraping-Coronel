@@ -1,6 +1,7 @@
 from colorama import Fore, Style
 import requests
 import json
+import json
 from typing import List
 import time
 from functools import wraps
@@ -109,37 +110,40 @@ def manejar_rate_limiting(func):
 
 
 def handle_imagenes_producto(producto, DOWNLOAD_IMAGES):
-    """Maneja imágenes locales o remotas según DOWNLOAD_IMAGES
-    
+    """Siempre descarga las imágenes desde la URL y las sube como adjuntos Base64.
+
     Args:
-        producto (dict): Diccionario con datos del producto
-        DOWNLOAD_IMAGES (str): 't' para descargar imágenes, 'f' para usar URLs
-        
+        producto (dict): Diccionario con datos del producto.
+        DOWNLOAD_IMAGES (str): Este parámetro ya no se utiliza pero se mantiene por compatibilidad.
+
     Returns:
-        list: Lista de diccionarios con imágenes listas para subir a Tiendanube
+        list: Lista de diccionarios con imágenes listas para subir a Tiendanube.
     """
+    imagenes_payload = []
+    image_url = producto.get('imagen_url')
+
+    if not image_url:
+        return []
+
     try:
-        # Validar parámetros de entrada
-        if not isinstance(producto, dict):
-            raise ValueError("El producto debe ser un diccionario")
-            
-        if DOWNLOAD_IMAGES not in ['t', 'f']:
-            raise ValueError("DOWNLOAD_IMAGES debe ser 't' o 'f'")
-        
-        # Manejar imágenes según configuración
-        if DOWNLOAD_IMAGES == 't':
-            if producto.get('imagen_local'):
-                imagen = subir_imagen_local(producto['imagen_local'])
-                return [imagen] if imagen else []
-        else:
-            if producto.get('imagen_url'):
-                return [{"src": producto['imagen_url']}]
-                
-        return []  # Retornar lista vacía si no hay imágenes válidas
-        
-    except Exception as e:
-        print(Fore.RED + f"Error manejando imágenes: {str(e)}" + Style.RESET_ALL)
-        return []  # Retornar lista vacía en caso de error
+        print(Fore.CYAN + f"Descargando imagen desde: {image_url}" + Style.RESET_ALL)
+        # Usamos verify=False por si hay certificados autofirmados en los dominios de origen.
+        response = requests.get(image_url, timeout=20, verify=False)
+        response.raise_for_status()
+
+        image_content = response.content
+        encoded_image = base64.b64encode(image_content).decode('utf-8')
+        filename = os.path.basename(image_url.split('?')[0])
+
+        imagenes_payload.append({
+            "attachment": encoded_image,
+            "filename": filename if filename else "image.jpg"
+        })
+        # print(Fore.GREEN + "✔ Imagen descargada y codificada en Base64." + Style.RESET_ALL)
+    except requests.exceptions.RequestException as e:
+        print(Fore.RED + f"Error al descargar la imagen {image_url}: {e}" + Style.RESET_ALL)
+
+    return imagenes_payload
 
 def subir_imagen_local(ruta_relativa):
     """Sube imagen local a Tiendanube y prepara estructura para API.
@@ -318,8 +322,14 @@ def crear_producto(producto, PATH, GANANCIA_PORCENTAJE, DOWNLOAD_IMAGES):
         
     except Exception as e:
         print(Fore.RED + f"Error creando producto: {type(e).__name__} - {str(e)}" + Style.RESET_ALL)
+        # Imprimir el payload para depuración
+        if 'payload' in locals():
+            print(Fore.YELLOW + "--- Payload Enviado ---" + Style.RESET_ALL)
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            print(Fore.YELLOW + "-----------------------" + Style.RESET_ALL)
+
         if hasattr(e, 'response') and e.response:
-            print(Fore.RED + f"Respuesta API: {e.response.text}" + Style.RESET_ALL)
+            print(Fore.RED + f"Respuesta de la API: {e.response.text}" + Style.RESET_ALL)
         return None
 
 
