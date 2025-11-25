@@ -3,6 +3,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 from app.login import login
 from colorama import Fore, Style, init
 import pandas as pd
@@ -41,15 +42,72 @@ chrome_options.add_experimental_option('prefs', {
 # Iniciar Chrome
 driver = webdriver.Chrome(options=chrome_options)
 
+LISTING_SELECTOR = (By.CLASS_NAME, "itemsBlock")
+NEXT_BUTTON_SELECTOR = (By.ID, "siguiente")
+
+
+def is_last_page(driver):
+    """Intenta determinar si no quedan más páginas o productos visibles."""
+    try:
+        next_button = driver.find_element(*NEXT_BUTTON_SELECTOR)
+        classes = (next_button.get_attribute("class") or "")
+        is_disabled = next_button.get_attribute("disabled") is not None
+        is_inactive = "btn-shadow" not in classes
+        if is_disabled or is_inactive:
+            return True
+    except Exception:
+        # Si no existe el botón asumimos fin de catálogo
+        return True
+
+    try:
+        if not driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product"):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def wait_for_listing(driver, wait_time=10, max_retries=3):
+    """Asegura que el listado de productos esté presente con reintentos."""
+    last_exception = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            WebDriverWait(driver, wait_time).until(
+                EC.presence_of_element_located(LISTING_SELECTOR)
+            )
+            return True
+        except TimeoutException as exc:
+            last_exception = exc
+            if is_last_page(driver):
+                print(Fore.GREEN + "✅ Catálogo sin más productos visibles." + Style.RESET_ALL)
+                return False
+            print(
+                Fore.YELLOW
+                + f"⚠️ Lista de productos no cargó (intento {attempt}/{max_retries}). Reintentando..."
+                + Style.RESET_ALL
+            )
+            time.sleep(2)
+            driver.refresh()
+
+    if last_exception:
+        raise last_exception
+    return False
+
 def scraping_product(driver, max_retries=3, wait_time=10):
     """
     Extrae información de productos
     """
     
-    # Esperar a que carguen los productos
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CLASS_NAME, "itemsBlock"))
-    )
+    # Esperar a que carguen los productos con reintentos controlados
+    try:
+        listing_ready = wait_for_listing(driver, wait_time=wait_time, max_retries=max_retries)
+    except TimeoutException as exc:
+        print(Fore.RED + f"✖ No se pudo preparar la página de productos: {exc}" + Style.RESET_ALL)
+        return [], ""
+
+    if not listing_ready:
+        # No hay más productos para procesar
+        return [], ""
     
     products = []
     
