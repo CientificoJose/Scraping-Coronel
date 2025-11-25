@@ -474,6 +474,7 @@ def actualizar_producto(producto_id, producto, ganancia_porcentaje, DOWNLOAD_IMA
         # Formatear precio
         precio_str = producto['precio'].replace('$', '').replace('.', '').replace(',', '.')
         precio = float(precio_str) * (1 + (ganancia_porcentaje)/100)
+        print(Fore.GREEN + f"Precio formateado: {precio}" + Style.RESET_ALL)
         
         payload_base = {
             "name": producto['descripcion'],
@@ -488,6 +489,8 @@ def actualizar_producto(producto_id, producto, ganancia_porcentaje, DOWNLOAD_IMA
         )
         response.raise_for_status()
         
+
+        
         
         # 3. Actualiza variante (requiere ID de variante)
         variante_id = obtener_id_variante(producto_id)
@@ -495,7 +498,8 @@ def actualizar_producto(producto_id, producto, ganancia_porcentaje, DOWNLOAD_IMA
             payload_variante = {
                 "stock_management": False,
                 "sku": producto['codigo'],
-                "barcode": producto['codigo_de_barras']
+                "barcode": producto['codigo_de_barras'],
+                "price": precio,
             }
             
            
@@ -512,7 +516,7 @@ def actualizar_producto(producto_id, producto, ganancia_porcentaje, DOWNLOAD_IMA
             
     
 
-        print(Fore.GREEN + f"✔ Producto {producto_id} actualizado correctamente" + Style.RESET_ALL)
+        print(Fore.GREEN + f"✔ Producto {producto_id} actualizado correctamente - Precio: {precio} | Codigo: {producto['codigo']} | Codigo de Barras: {producto['codigo_de_barras']}" + Style.RESET_ALL)
         return True
 
     except requests.exceptions.HTTPError as e:
