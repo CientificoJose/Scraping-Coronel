@@ -47,9 +47,10 @@ LISTING_SELECTOR = (By.CLASS_NAME, "itemsBlock")
 NEXT_BUTTON_SELECTOR = (By.ID, "siguiente")
 
 # Configuración de tiempos y reintentos (ajustable para conexiones lentas)
-MAX_RETRIES = 5
-WAIT_TIME = 20
-MIN_EXPECTED_PAGES = 100  # Mínimo de páginas esperadas en el catálogo
+MAX_RETRIES = 7
+WAIT_TIME = 25
+MIN_EXPECTED_PAGES = 680  # Mínimo de páginas esperadas en el catálogo
+LOADING_SELECTOR = (By.CSS_SELECTOR, ".loading, .spinner, .loader, [class*='loading'], [class*='spinner']")
 
 
 def get_current_page_from_url(driver):
@@ -62,6 +63,35 @@ def get_current_page_from_url(driver):
     except Exception:
         pass
     return 1
+
+
+def wait_for_page_ready(driver, timeout=10):
+    """
+    Espera a que la página esté lista: sin spinners/loading activos.
+    Retorna True si la página parece lista, False si hay timeout.
+    """
+    try:
+        # Esperar a que desaparezca cualquier indicador de loading
+        WebDriverWait(driver, timeout).until_not(
+            EC.presence_of_element_located(LOADING_SELECTOR)
+        )
+    except TimeoutException:
+        # Si el loading no desaparece, puede que no exista o esté atascado
+        pass
+    except Exception:
+        pass
+    
+    # Esperar a que el documento esté completo
+    try:
+        WebDriverWait(driver, timeout).until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
+    except Exception:
+        pass
+    
+    # Pequeña pausa adicional para que Angular/JS termine de renderizar
+    time.sleep(1)
+    return True
 
 
 def is_last_page(driver, be_conservative=False):
@@ -113,6 +143,9 @@ def wait_for_listing(driver, wait_time=WAIT_TIME, max_retries=MAX_RETRIES):
     current_page = get_current_page_from_url(driver)
     
     for attempt in range(1, max_retries + 1):
+        # Primero esperar a que la página esté lista (sin loading)
+        wait_for_page_ready(driver, timeout=10)
+        
         try:
             WebDriverWait(driver, wait_time).until(
                 EC.presence_of_element_located(LISTING_SELECTOR)
@@ -121,20 +154,22 @@ def wait_for_listing(driver, wait_time=WAIT_TIME, max_retries=MAX_RETRIES):
         except TimeoutException as exc:
             last_exception = exc
             
-            # Ser conservador en páginas bajas para evitar falsos positivos
-            be_conservative = (attempt < max_retries) and (current_page < MIN_EXPECTED_PAGES)
+            # SIEMPRE ser conservador en páginas bajas
+            be_conservative = current_page < MIN_EXPECTED_PAGES
             
             if is_last_page(driver, be_conservative=be_conservative):
-                # Doble verificación: si estamos en página baja, intentar navegar directamente
-                if current_page < MIN_EXPECTED_PAGES and attempt < max_retries:
+                # Si estamos en página baja, NUNCA declarar fin sin intentar navegación directa
+                if current_page < MIN_EXPECTED_PAGES:
                     print(
                         Fore.YELLOW
-                        + f"⚠️ Posible falso positivo en página {current_page}. Intentando navegación directa..."
+                        + f"⚠️ Posible falso positivo en página {current_page} (intento {attempt}/{max_retries}). Navegación directa..."
                         + Style.RESET_ALL
                     )
                     next_page = current_page + 1
                     driver.get(f"https://www.coronelmayorista.com/#/articulos?page={next_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
-                    time.sleep(3)
+                    time.sleep(5)
+                    wait_for_page_ready(driver, timeout=10)
+                    current_page = next_page  # Actualizar página actual
                     continue
                     
                 print(Fore.GREEN + f"✅ Catálogo sin más productos visibles (página {current_page})." + Style.RESET_ALL)
@@ -145,27 +180,30 @@ def wait_for_listing(driver, wait_time=WAIT_TIME, max_retries=MAX_RETRIES):
                 + f"⚠️ Lista de productos no cargó (intento {attempt}/{max_retries}, página {current_page}). Reintentando..."
                 + Style.RESET_ALL
             )
-            time.sleep(3)
+            time.sleep(4)
             driver.refresh()
-            time.sleep(2)
+            time.sleep(3)
 
-    # Último intento: navegación directa a la siguiente página
+    # Último intento: navegación directa múltiple
     if current_page < MIN_EXPECTED_PAGES:
-        print(
-            Fore.YELLOW
-            + f"⚠️ Agotados reintentos en página {current_page}. Último intento con navegación directa..."
-            + Style.RESET_ALL
-        )
-        next_page = current_page + 1
-        driver.get(f"https://www.coronelmayorista.com/#/articulos?page={next_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
-        time.sleep(5)
-        try:
-            WebDriverWait(driver, wait_time).until(
-                EC.presence_of_element_located(LISTING_SELECTOR)
+        for extra_attempt in range(3):
+            print(
+                Fore.YELLOW
+                + f"⚠️ Intento extra {extra_attempt + 1}/3: navegación directa a página {current_page + 1}..."
+                + Style.RESET_ALL
             )
-            return True
-        except TimeoutException:
-            pass
+            next_page = current_page + 1
+            driver.get(f"https://www.coronelmayorista.com/#/articulos?page={next_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
+            time.sleep(6)
+            wait_for_page_ready(driver, timeout=15)
+            try:
+                WebDriverWait(driver, wait_time).until(
+                    EC.presence_of_element_located(LISTING_SELECTOR)
+                )
+                return True
+            except TimeoutException:
+                current_page = next_page
+                continue
 
     if last_exception:
         raise last_exception
