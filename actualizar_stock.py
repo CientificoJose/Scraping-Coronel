@@ -138,11 +138,18 @@ def is_last_page(driver, be_conservative=False):
 
 
 def wait_for_listing(driver, wait_time=WAIT_TIME, max_retries=MAX_RETRIES):
-    """Asegura que el listado de productos esté presente con reintentos."""
+    """
+    Asegura que el listado de productos esté presente con reintentos.
+    Si estamos en página < MIN_EXPECTED_PAGES, los reintentos son INFINITOS.
+    """
     last_exception = None
     current_page = get_current_page_from_url(driver)
+    attempt = 0
+    consecutive_failures = 0
     
-    for attempt in range(1, max_retries + 1):
+    while True:
+        attempt += 1
+        
         # Primero esperar a que la página esté lista (sin loading)
         wait_for_page_ready(driver, timeout=10)
         
@@ -153,61 +160,56 @@ def wait_for_listing(driver, wait_time=WAIT_TIME, max_retries=MAX_RETRIES):
             return True
         except TimeoutException as exc:
             last_exception = exc
+            consecutive_failures += 1
             
-            # SIEMPRE ser conservador en páginas bajas
-            be_conservative = current_page < MIN_EXPECTED_PAGES
+            # Obtener página actual actualizada
+            current_page = get_current_page_from_url(driver)
             
-            if is_last_page(driver, be_conservative=be_conservative):
-                # Si estamos en página baja, NUNCA declarar fin sin intentar navegación directa
-                if current_page < MIN_EXPECTED_PAGES:
-                    print(
-                        Fore.YELLOW
-                        + f"⚠️ Posible falso positivo en página {current_page} (intento {attempt}/{max_retries}). Navegación directa..."
-                        + Style.RESET_ALL
-                    )
-                    next_page = current_page + 1
-                    driver.get(f"https://www.coronelmayorista.com/#/articulos?page={next_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
-                    time.sleep(5)
-                    wait_for_page_ready(driver, timeout=10)
-                    current_page = next_page  # Actualizar página actual
-                    continue
-                    
-                print(Fore.GREEN + f"✅ Catálogo sin más productos visibles (página {current_page})." + Style.RESET_ALL)
-                return False
-                
-            print(
-                Fore.YELLOW
-                + f"⚠️ Lista de productos no cargó (intento {attempt}/{max_retries}, página {current_page}). Reintentando..."
-                + Style.RESET_ALL
-            )
-            time.sleep(4)
-            driver.refresh()
-            time.sleep(3)
-
-    # Último intento: navegación directa múltiple
-    if current_page < MIN_EXPECTED_PAGES:
-        for extra_attempt in range(3):
-            print(
-                Fore.YELLOW
-                + f"⚠️ Intento extra {extra_attempt + 1}/3: navegación directa a página {current_page + 1}..."
-                + Style.RESET_ALL
-            )
-            next_page = current_page + 1
-            driver.get(f"https://www.coronelmayorista.com/#/articulos?page={next_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
-            time.sleep(6)
-            wait_for_page_ready(driver, timeout=15)
-            try:
-                WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located(LISTING_SELECTOR)
+            # Si estamos en página >= MIN_EXPECTED_PAGES, aplicar límite de reintentos
+            if current_page >= MIN_EXPECTED_PAGES:
+                if is_last_page(driver, be_conservative=False):
+                    print(Fore.GREEN + f"✅ Catálogo sin más productos visibles (página {current_page})." + Style.RESET_ALL)
+                    return False
+                if attempt >= max_retries:
+                    if last_exception:
+                        raise last_exception
+                    return False
+            
+            # Estrategia de recuperación según número de fallos consecutivos
+            if consecutive_failures <= 3:
+                # Primeros intentos: refresh simple
+                print(
+                    Fore.YELLOW
+                    + f"⚠️ Lista no cargó (intento {attempt}, página {current_page}). Refresh..."
+                    + Style.RESET_ALL
                 )
-                return True
-            except TimeoutException:
-                current_page = next_page
-                continue
-
-    if last_exception:
-        raise last_exception
-    return False
+                time.sleep(3)
+                driver.refresh()
+                time.sleep(2)
+                
+            elif consecutive_failures <= 6:
+                # Intentos medios: navegación directa a la misma página
+                print(
+                    Fore.YELLOW
+                    + f"⚠️ Reintentando página {current_page} con navegación directa (intento {attempt})..."
+                    + Style.RESET_ALL
+                )
+                driver.get(f"https://www.coronelmayorista.com/#/articulos?page={current_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
+                time.sleep(5)
+                wait_for_page_ready(driver, timeout=15)
+                
+            else:
+                # Muchos fallos: saltar a la siguiente página
+                print(
+                    Fore.YELLOW
+                    + f"⚠️ Demasiados fallos en página {current_page}. Saltando a página {current_page + 1} (intento {attempt})..."
+                    + Style.RESET_ALL
+                )
+                current_page += 1
+                driver.get(f"https://www.coronelmayorista.com/#/articulos?page={current_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
+                time.sleep(6)
+                wait_for_page_ready(driver, timeout=15)
+                consecutive_failures = 0  # Reset para la nueva página
 
 def scraping_product(driver, max_retries=MAX_RETRIES, wait_time=WAIT_TIME):
     """
