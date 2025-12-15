@@ -12,6 +12,7 @@ import os
 import glob
 import sqlite3
 import requests
+import re
 from datetime import datetime
 
 # Configuración de la API de Tiendanube
@@ -45,31 +46,72 @@ driver = webdriver.Chrome(options=chrome_options)
 LISTING_SELECTOR = (By.CLASS_NAME, "itemsBlock")
 NEXT_BUTTON_SELECTOR = (By.ID, "siguiente")
 
+# Configuración de tiempos y reintentos (ajustable para conexiones lentas)
+MAX_RETRIES = 5
+WAIT_TIME = 20
+MIN_EXPECTED_PAGES = 100  # Mínimo de páginas esperadas en el catálogo
 
-def is_last_page(driver):
-    """Intenta determinar si no quedan más páginas o productos visibles."""
+
+def get_current_page_from_url(driver):
+    """Extrae el número de página actual de la URL."""
+    try:
+        url = driver.current_url
+        match = re.search(r'page=(\d+)', url)
+        if match:
+            return int(match.group(1))
+    except Exception:
+        pass
+    return 1
+
+
+def is_last_page(driver, be_conservative=False):
+    """
+    Intenta determinar si no quedan más páginas o productos visibles.
+    Si be_conservative=True, solo retorna True si estamos SEGUROS de que es la última.
+    """
+    current_page = get_current_page_from_url(driver)
+    
     try:
         next_button = driver.find_element(*NEXT_BUTTON_SELECTOR)
         classes = (next_button.get_attribute("class") or "")
         is_disabled = next_button.get_attribute("disabled") is not None
         is_inactive = "btn-shadow" not in classes
-        if is_disabled or is_inactive:
+        
+        # Si el botón está claramente deshabilitado, es última página
+        if is_disabled:
             return True
+            
+        # Si estamos siendo conservadores y la página es baja, no declarar fin
+        if be_conservative and current_page < MIN_EXPECTED_PAGES:
+            if is_inactive:
+                print(Fore.YELLOW + f"⚠️ Botón inactivo en página {current_page}, pero siendo conservador..." + Style.RESET_ALL)
+                return False
+                
+        if is_inactive:
+            return True
+            
     except Exception:
-        # Si no existe el botón asumimos fin de catálogo
+        # Si no existe el botón y estamos siendo conservadores, no asumir fin
+        if be_conservative and current_page < MIN_EXPECTED_PAGES:
+            return False
         return True
 
     try:
         if not driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product"):
+            # Si no hay productos pero estamos en página baja, puede ser carga lenta
+            if be_conservative and current_page < MIN_EXPECTED_PAGES:
+                return False
             return True
     except Exception:
         pass
     return False
 
 
-def wait_for_listing(driver, wait_time=10, max_retries=3):
+def wait_for_listing(driver, wait_time=WAIT_TIME, max_retries=MAX_RETRIES):
     """Asegura que el listado de productos esté presente con reintentos."""
     last_exception = None
+    current_page = get_current_page_from_url(driver)
+    
     for attempt in range(1, max_retries + 1):
         try:
             WebDriverWait(driver, wait_time).until(
@@ -78,22 +120,58 @@ def wait_for_listing(driver, wait_time=10, max_retries=3):
             return True
         except TimeoutException as exc:
             last_exception = exc
-            if is_last_page(driver):
-                print(Fore.GREEN + "✅ Catálogo sin más productos visibles." + Style.RESET_ALL)
+            
+            # Ser conservador en páginas bajas para evitar falsos positivos
+            be_conservative = (attempt < max_retries) and (current_page < MIN_EXPECTED_PAGES)
+            
+            if is_last_page(driver, be_conservative=be_conservative):
+                # Doble verificación: si estamos en página baja, intentar navegar directamente
+                if current_page < MIN_EXPECTED_PAGES and attempt < max_retries:
+                    print(
+                        Fore.YELLOW
+                        + f"⚠️ Posible falso positivo en página {current_page}. Intentando navegación directa..."
+                        + Style.RESET_ALL
+                    )
+                    next_page = current_page + 1
+                    driver.get(f"https://www.coronelmayorista.com/#/articulos?page={next_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
+                    time.sleep(3)
+                    continue
+                    
+                print(Fore.GREEN + f"✅ Catálogo sin más productos visibles (página {current_page})." + Style.RESET_ALL)
                 return False
+                
             print(
                 Fore.YELLOW
-                + f"⚠️ Lista de productos no cargó (intento {attempt}/{max_retries}). Reintentando..."
+                + f"⚠️ Lista de productos no cargó (intento {attempt}/{max_retries}, página {current_page}). Reintentando..."
                 + Style.RESET_ALL
             )
-            time.sleep(2)
+            time.sleep(3)
             driver.refresh()
+            time.sleep(2)
+
+    # Último intento: navegación directa a la siguiente página
+    if current_page < MIN_EXPECTED_PAGES:
+        print(
+            Fore.YELLOW
+            + f"⚠️ Agotados reintentos en página {current_page}. Último intento con navegación directa..."
+            + Style.RESET_ALL
+        )
+        next_page = current_page + 1
+        driver.get(f"https://www.coronelmayorista.com/#/articulos?page={next_page}&ORDER=ORD%3DASC&VIEW_TYPE=GRID_VI")
+        time.sleep(5)
+        try:
+            WebDriverWait(driver, wait_time).until(
+                EC.presence_of_element_located(LISTING_SELECTOR)
+            )
+            return True
+        except TimeoutException:
+            pass
 
     if last_exception:
         raise last_exception
     return False
 
-def scraping_product(driver, max_retries=3, wait_time=10):
+def scraping_product(driver, max_retries=MAX_RETRIES, wait_time=WAIT_TIME):
     """
     Extrae información de productos
     """
@@ -102,7 +180,8 @@ def scraping_product(driver, max_retries=3, wait_time=10):
     try:
         listing_ready = wait_for_listing(driver, wait_time=wait_time, max_retries=max_retries)
     except TimeoutException as exc:
-        print(Fore.RED + f"✖ No se pudo preparar la página de productos: {exc}" + Style.RESET_ALL)
+        current_page = get_current_page_from_url(driver)
+        print(Fore.RED + f"✖ No se pudo preparar la página {current_page}: {exc}" + Style.RESET_ALL)
         return [], ""
 
     if not listing_ready:
