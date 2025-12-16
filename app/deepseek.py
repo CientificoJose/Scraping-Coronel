@@ -13,12 +13,15 @@ import requests
 # Cargar variables de entorno
 #load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'API_KEY.ENV'))
 
-api_key="sk-765ebb89ae3b402d8fd9f11117ad9d68"
+# API Key de OpenAI - REEMPLAZA CON TU API KEY
+api_key = os.getenv("OPENAI_API_KEY", "sk-TU_API_KEY_AQUI")
 
-# Configuración del cliente
+# Modelo más económico de OpenAI
+MODEL_NAME = "gpt-4o-mini"  # $0.15/1M input, $0.60/1M output
+
+# Configuración del cliente OpenAI
 client = OpenAI(
-    api_key=api_key,
-    base_url="https://api.deepseek.com/v1"  # Verifica que esta sea la URL correcta
+    api_key=api_key
 )
 
 
@@ -40,7 +43,7 @@ Ejemplo de respuesta válida:
     
 def obtener_dimensiones_lote(productos: List[Dict], categoria: str) -> List[Dict]:
     """
-    Obtiene dimensiones y peso para un lote de productos usando DeepSeek API
+    Obtiene dimensiones y peso para un lote de productos usando OpenAI GPT-4o-mini
     
     Args:
         productos: Lista de diccionarios con datos de productos
@@ -54,7 +57,7 @@ def obtener_dimensiones_lote(productos: List[Dict], categoria: str) -> List[Dict
     base_delay = 1  # segundos
     
     # Crear directorio de logs si no existe
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'deepseek_logs')
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'openai_logs')
     os.makedirs(log_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
@@ -72,7 +75,7 @@ def obtener_dimensiones_lote(productos: List[Dict], categoria: str) -> List[Dict
     with open(prompt_file, 'w', encoding='utf-8') as f:
         f.write(prompt)
 
-    # 2. Llamar a la API de DeepSeek con reintentos
+    # 2. Llamar a la API de OpenAI con reintentos
     last_error = None
     
     for attempt in range(max_retries):
@@ -85,12 +88,11 @@ def obtener_dimensiones_lote(productos: List[Dict], categoria: str) -> List[Dict
             
             # Llamar a la API
             response = client.chat.completions.create(
-                model="deepseek-chat",
+                model=MODEL_NAME,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=4000,
-                response_format={"type": "json_object"},
-                timeout=60  # Aumentar timeout a 60 segundos
+                response_format={"type": "json_object"}
             )
             
             # 3. Procesar respuesta

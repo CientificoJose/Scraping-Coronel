@@ -1,7 +1,9 @@
 # Directorios a excluir
 /img-scraping/
 /deepseek_logs/
+/openai_logs/
 /__pycache__/
+
 
 # Archivos sensibles
 *.ENV
