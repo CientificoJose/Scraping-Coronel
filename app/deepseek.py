@@ -8,13 +8,19 @@ import time
 from contextlib import closing
 import sqlite3
 import requests
+from pathlib import Path
+from dotenv import load_dotenv
 
 
-# Cargar variables de entorno
-#load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'API_KEY.ENV'))
+# Cargar variables de entorno desde API_KEY.ENV
+env_path = Path(__file__).parent.parent / "API_KEY.ENV"
+load_dotenv(env_path)
 
-# API Key de OpenAI - REEMPLAZA CON TU API KEY
-api_key = os.getenv("OPENAI_API_KEY", "sk-TU_API_KEY_AQUI")
+# API Key de OpenAI (se carga desde API_KEY.ENV)
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    print("⚠️ OPENAI_API_KEY no encontrada. Verifica tu archivo API_KEY.ENV")
 
 # Modelo más económico de OpenAI
 MODEL_NAME = "gpt-4o-mini"  # $0.15/1M input, $0.60/1M output
