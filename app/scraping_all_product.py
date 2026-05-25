@@ -52,17 +52,25 @@ def scraping_all_product(driver):
             # Intentar cambio de página
             driver.execute_script("arguments[0].click();", next_button)
             
-            # Esperar cambios con timeout más corto
+            # Esperar cambios de página de forma robusta
             try:
-                WebDriverWait(driver, 5).until(
-                    lambda d: (
-                        d.current_url != current_url or
-                        len(scrape_products(driver)) > len(current_products)
-                    )
-                )
+                first_sku = current_products[0]['codigo'] if current_products else None
+                
+                def next_page_loaded(d):
+                    if d.current_url != current_url:
+                        return True
+                    try:
+                        new_first_product = d.find_element(By.CSS_SELECTOR, ".col-art .card-product")
+                        new_sku = new_first_product.find_element(By.CSS_SELECTOR, ".span-codigo").text.replace("Código: ", "").strip()
+                        return new_sku != first_sku
+                    except:
+                        return False
+
+                WebDriverWait(driver, 8).until(next_page_loaded)
+                time.sleep(1)  # Estabilización
                 page_number += 1
             except:
-                print(Fore.RED + "❌ No hubo cambio de página - última página confirmada" + Fore.RESET)
+                print(Fore.RED + "❌ No se detectó cambio de página - deteniendo scraping o última página" + Fore.RESET)
                 break
                 
         except Exception as e:

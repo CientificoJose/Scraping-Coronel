@@ -278,7 +278,7 @@ def crear_producto(producto, PATH, GANANCIA_PORCENTAJE, DOWNLOAD_IMAGES):
         'codigo': producto['codigo']
     }]
     dimensiones = obtener_dimensiones_producto(producto_lista, categorias, PATH)
-    if dimensiones:
+    if dimensiones and 'peso_kg' in dimensiones[0]:
         peso_kg = dimensiones[0]['peso_kg']
         ancho_cm = dimensiones[0]['ancho_cm']
         alto_cm = dimensiones[0]['alto_cm']

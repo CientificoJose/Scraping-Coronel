@@ -29,6 +29,19 @@ headers = {
 # Inicializar colorama
 init()
 
+def formatear_codigo(codigo):
+    if not codigo:
+        return codigo
+    partes = codigo.split('-', 1)
+    base = partes[0]
+    variante = f"-{partes[1]}" if len(partes) > 1 else ""
+    
+    match = re.match(r"^([a-zA-Z]+)(\d+.*)$", base)
+    if match:
+        prefijo, numero = match.groups()
+        return f"{prefijo}-{numero}{variante}"
+    return codigo
+
 # Configurar Chrome
 chrome_options = Options()
 chrome_options.add_argument('--start-maximized')
@@ -257,6 +270,8 @@ def scraping_product(driver, max_retries=MAX_RETRIES, wait_time=WAIT_TIME):
             except:
                 print(f"{Fore.RED}⚠️ No se pudo obtener el código del producto {index}{Style.RESET_ALL}")
                 continue
+            
+            code = formatear_codigo(code)
             
             # Procesar variante (ORO)
             variant = ""
