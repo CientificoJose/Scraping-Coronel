@@ -81,7 +81,17 @@ OPENAI_API_KEY=sk-proj-xxxx...
 
 ---
 
-## 🚀 Uso mediante la CLI (`main.py`)
+## 🚀 Ejecución Simplificada (Recomendado para Clientes)
+
+Para la comodidad del usuario final, se incluye un lanzador interactivo:
+
+1. **Doble Clic** en el archivo [Sincronizar_JG_Store.bat](file:///d:/Repositorios/Scraping-Coronel/Sincronizar_JG_Store.bat) en la raíz del proyecto.
+2. Se abrirá una ventana de consola con un menú interactivo numerado.
+3. Seleccione la tarea deseada (ej. `1` para el flujo rápido de scraping + subida) y configure los valores sugeridos presionando **Enter**.
+
+---
+
+## 💻 Uso Avanzado mediante CLI (`main.py`)
 
 El punto de entrada principal del sistema es `main.py`, que expone una interfaz de comandos (CLI) estructurada mediante **subcomandos**:
 
@@ -113,6 +123,13 @@ Ejecuta secuencialmente todo el pipeline de automatización de una sola vez: `sc
 ```bash
 python -X utf8 main.py full-run [opciones]
 ```
+
+### 5. Flujo Parcial (`scrape-sync`)
+Ejecuta secuencialmente el scraping de catálogo y la sincronización de productos a Tiendanube, sin realizar la actualización rápida de stocks o inactivaciones (`scrape` ➡️ `sync`).
+```bash
+python -X utf8 main.py scrape-sync [opciones]
+```
+*(Mismas opciones que `scrape`)*
 
 ---
 

@@ -281,9 +281,16 @@ class TiendanubeClient:
             alto_cm = 0.05
             profundidad_cm = 0.05
             
+        # Fallback de descripción si se detecta bloqueo regional de OpenAI
+        nombre_producto = producto['descripcion']
+        descripcion_producto = ""
+        if producto_lista[0].get('unsupported_region'):
+            nombre_producto = f"ESTO ES UNA PRUEBA - unsupported_country_region_territory ({producto['descripcion']})"
+            descripcion_producto = "ESTO ES UNA PRUEBA - unsupported_country_region_territory"
+            
         try:
             payload = {
-                "name": producto['descripcion'],
+                "name": nombre_producto,
                 "variants": [{
                     "price": precio,
                     "stock_management": False,
@@ -298,7 +305,9 @@ class TiendanubeClient:
                 "images": self.handle_imagenes_producto(producto, download_images_flag),
                 "categories": self.obtener_ids_categorias(producto)
             }
-            
+            if descripcion_producto:
+                payload["description"] = {"es": descripcion_producto}
+                
             response = requests.post(f"{self.base_url}/products", headers=self.headers, json=payload, timeout=20)
             response.raise_for_status()
             return response.json()['id']

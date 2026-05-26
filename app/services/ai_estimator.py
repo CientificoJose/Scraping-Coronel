@@ -128,8 +128,17 @@ def obtener_dimensiones_lote(productos: List[Dict], categoria: str) -> List[Dict
             
         except Exception as e:
             last_error = e
-            print(Fore.RED + f"Intento {attempt + 1} de OpenAI fallido: {str(e)}" + Style.RESET_ALL)
+            err_str = str(e)
+            print(Fore.RED + f"Intento {attempt + 1} de OpenAI fallido: {err_str}" + Style.RESET_ALL)
             
+            # Si es un error de territorio no soportado (ej. ejecutado desde Venezuela),
+            # no reintentar (es un bloqueo permanente) y marcar los productos
+            if "unsupported_country_region_territory" in err_str:
+                print(Fore.RED + "❌ Conexión a OpenAI prohibida: Territorio no soportado (Venezuela)." + Style.RESET_ALL)
+                for prod in productos:
+                    prod['unsupported_region'] = True
+                break
+                
             # Guardar error en log
             try:
                 error_file = os.path.join(log_dir, f'error_{timestamp}_attempt{attempt}.txt')

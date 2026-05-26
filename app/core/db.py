@@ -98,52 +98,32 @@ def consolidar_productos(todos_los_productos: List[Dict], db_path: Optional[str]
             
             for producto in todos_los_productos:
                 codigo = producto.get('codigo', '')
+                codigo_barra = producto.get('codigo_de_barras', '')
                 
-                # Si el código contiene guion, siempre INSERT (nuevo producto)
-                if '-' in codigo:
-                    cursor.execute("""
-                        INSERT INTO productos (
-                            codigo, codigo_barra, descripcion, precio, 
-                            imagen_url, imagen_local, variante, categoria, subcategoria,
-                            peso_kg, ancho_cm, alto_cm, profundidad_cm
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        codigo,
-                        producto.get('codigo_de_barras', ''),
-                        producto.get('descripcion', ''),
-                        producto.get('precio', ''),
-                        producto.get('imagen_url', ''),
-                        producto.get('imagen_local', ''),
-                        producto.get('variante', ''),
-                        producto.get('categoria', ''),
-                        producto.get('subcategoria', ''),
-                        producto.get('peso_kg', ''),
-                        producto.get('ancho_cm', ''),
-                        producto.get('alto_cm', ''),
-                        producto.get('profundidad_cm', '')
-                    ))
-                else:
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO productos (
-                            codigo, codigo_barra, descripcion, precio, 
-                            imagen_url, imagen_local, variante, categoria, subcategoria,
-                            peso_kg, ancho_cm, alto_cm, profundidad_cm
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        codigo,
-                        producto.get('codigo_de_barras', ''),
-                        producto.get('descripcion', ''),
-                        producto.get('precio', ''),
-                        producto.get('imagen_url', ''),
-                        producto.get('imagen_local', ''),
-                        producto.get('variante', ''),
-                        producto.get('categoria', ''),
-                        producto.get('subcategoria', ''),
-                        producto.get('peso_kg', ''),
-                        producto.get('ancho_cm', ''),
-                        producto.get('alto_cm', ''),
-                        producto.get('profundidad_cm', '')
-                    ))
+                # Asegurar que el registro existe
+                cursor.execute("INSERT OR IGNORE INTO productos (codigo, codigo_barra) VALUES (?, ?)", (codigo, codigo_barra))
+                
+                # Actualizar los campos obtenidos del scraping, preservando dimensiones preexistentes
+                cursor.execute("""
+                    UPDATE productos SET
+                        descripcion = ?,
+                        precio = ?,
+                        imagen_url = ?,
+                        imagen_local = ?,
+                        variante = ?,
+                        categoria = ?,
+                        subcategoria = ?
+                    WHERE codigo = ?
+                """, (
+                    producto.get('descripcion', ''),
+                    producto.get('precio', ''),
+                    producto.get('imagen_url', ''),
+                    producto.get('imagen_local', ''),
+                    producto.get('variante', ''),
+                    producto.get('categoria', ''),
+                    producto.get('subcategoria', ''),
+                    codigo
+                ))
             
             # Eliminar productos con descripción vacía
             cursor.execute("DELETE FROM productos WHERE descripcion = '' OR descripcion IS NULL")
