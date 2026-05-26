@@ -1,65 +1,135 @@
-# JG-STORE Scraping
+# JG-STORE Scraping & Sincronización
 
-## Requisitos previos
-1. Python 3.8 o superior instalado
-2. Google Chrome instalado (para Selenium)
-3. Git instalado (opcional, para clonar el repositorio)
-4. SQLite viene incluido con Python, no requiere instalación adicional
+Este proyecto es un sistema modular, robusto y automatizado para extraer productos desde el catálogo de **Coronel Mayorista** (utilizando Selenium) y sincronizarlos (actualizando precios, stock, imágenes y dimensiones) directamente en la plataforma **Tiendanube** (utilizando su API REST).
 
-## Base de datos
-El proyecto utiliza SQLite como base de datos, que viene incluido con Python. La base de datos se creará automáticamente en la primera ejecución del script. No necesitas instalar nada adicional para SQLite.
+El sistema cuenta con estimación inteligente de peso y dimensiones mediante IA (OpenAI GPT-4o-mini) y tolerancia a fallos.
 
-## Instalación
+---
 
-1. Clona o descarga este repositorio en tu computadora
+## 🏗️ Arquitectura del Proyecto
 
-2. Abre una terminal o línea de comandos y navega hasta la carpeta del proyecto:
-```bash
-cd ruta/a/JG-STORE/Scraping
+El proyecto ha sido refactorizado en una arquitectura limpia y desacoplada de 4 capas:
+
+```mermaid
+graph TD
+    ENV[.env / API_KEY.ENV] --> |Carga variables| CONFIG[Configurador Central / config.py]
+    
+    CONFIG --> DB_MGR[Database Manager / db.py]
+    CONFIG --> WEB_FAC[WebDriver Factory / browser.py]
+    CONFIG --> TN_CLIENT[Tiendanube Client / tiendanube.py]
+    CONFIG --> AI_MGR[AI Dimensions Estimator / ai_estimator.py]
+    
+    DB_MGR <--> |SQLite productos.db| SCRAPER
+    WEB_FAC --> |WebDriver Configurado| SCRAPER[Scraper Engine / scraper.py]
+    
+    SCRAPER --> |Escribe productos| DB_MGR
+    
+    ORCH[Orquestador / main.py] --> |Ejecuta| SCRAPER
+    ORCH --> |Ejecuta| SYNC[Sincronizador de Productos / subida_tienda.py]
+    ORCH --> |Ejecuta| STOCK[Sincronizador de Stock / actualizar_stock.py]
+    
+    TN_CLIENT <--> |API REST| SYNC
+    TN_CLIENT <--> |API REST| STOCK
+    AI_MGR <--> |GPT-4o-mini| SYNC
 ```
 
-3. (Recomendado) Crea un entorno virtual:
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
+- **`config.py`**: Centraliza y valida todas las variables de entorno.
+- **`app/core/`**:
+  - `browser.py`: Fábrica unificada para Selenium WebDriver (Chrome).
+  - `db.py`: Controlador de base de datos SQLite (`productos.db`), encapsulando todas las consultas SQL.
+- **`app/services/`**:
+  - `tiendanube.py` (`TiendanubeClient`): Interfaz unificada de comunicación con la API de Tiendanube. Implementa control de Rate Limiting y caché local en disco para evitar peticiones redundantes.
+  - `ai_estimator.py`: Estima dimensiones de envío por lote usando IA, con fallback tolerante a fallos (valores por defecto) si la clave de OpenAI no está configurada o la API falla.
 
-# Linux/Mac
-python3 -m venv venv
-source venv/bin/activate
-```
+---
 
-4. Instala las dependencias:
-```bash
-pip install -r requirements.txt
-```
+## 📋 Requisitos Previos
 
-## Configuración
-1. Crea un archivo `.env` en la carpeta Scraping con las siguientes variables:
+1. **Python 3.8+** instalado.
+2. **Google Chrome** instalado.
+3. Dependencias instaladas:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
+
+## ⚙️ Configuración y Credenciales
+
+El configurador central de seguridad buscará las credenciales en la raíz del proyecto. Soporta múltiples nombres de archivo para compatibilidad con Windows (incluyendo extensiones ocultas):
+- `API_KEY.ENV` / `API_KEY.ENV.txt`
+- `.env`
+- `api_key.env` / `api_key.env.txt`
+
+Crea uno de estos archivos y define el siguiente contenido:
+
 ```env
-# Credenciales de Tiendanube
-ACCESS_TOKEN=tu_token_de_tiendanube
-STORE_ID=tu_id_de_tienda
+# Credenciales Coronel Mayorista
+CORONEL_CUIT=tu_cuit_del_mayorista
+CORONEL_PASSWORD=tu_contraseña_del_mayorista
 
-# API Key de OpenAI (necesaria para el módulo deepseek)
-OPENAI_API_KEY=tu_api_key_de_openai
+# Credenciales Tiendanube
+TIENDANUBE_STORE_ID=tu_id_de_tienda
+TIENDANUBE_ACCESS_TOKEN=tu_token_de_acceso_tiendanube
+TIENDANUBE_USER_AGENT=API-KEY (tu_correo@gmail.com)
+
+# API Key OpenAI (Para dimensiones estimadas con IA)
+OPENAI_API_KEY=sk-proj-xxxx...
 ```
 
-## Uso
-Para ejecutar el script principal:
+*Nota: Si `OPENAI_API_KEY` no se define, el sistema continuará funcionando utilizando valores de peso y dimensiones estándar (0.05) para los envíos.*
+
+---
+
+## 🚀 Uso mediante la CLI (`main.py`)
+
+El punto de entrada principal del sistema es `main.py`, que expone una interfaz de comandos (CLI) estructurada mediante **subcomandos**:
+
+### 1. Extraer Catálogo (`scrape`)
+Navega por Coronel Mayorista y guarda los productos actuales en la base de datos local SQLite.
 ```bash
-python scraping_coronel.py
+python -X utf8 main.py scrape [opciones]
+```
+**Opciones disponibles:**
+- `-g`, `--ganancia`: Porcentaje de incremento de precio a aplicar (ej. `40` para 40%). Si no se especifica, se preguntará interactivamente.
+- `-d`, `--download-images`: Descargar imágenes localmente en la carpeta `img-scraping` (`t` para activar, `f` para desactivar).
+- `-y`, `--no-prompt`: Ejecución automática sin prompts. Usa valores por defecto si no se especifican.
+
+### 2. Sincronizar Productos (`sync`)
+Compara la base de datos local SQLite con Tiendanube, sube los productos nuevos y actualiza precios y descripciones de los existentes.
+```bash
+python -X utf8 main.py sync [opciones]
+```
+*(Mismas opciones que `scrape`)*
+
+### 3. Actualizar Stocks (`stock`)
+Navega rápidamente por el mayorista para ver qué productos están activos. Los productos encontrados en el catálogo mayorista se actualizarán con stock "infinito" (999999). Los que ya no figuren se marcarán con stock `0` y se ocultarán en Tiendanube si no tienen variantes disponibles.
+```bash
+python -X utf8 main.py stock
 ```
 
-## Notas sobre SQLite
-- La base de datos se crea automáticamente en el archivo `productos.db`
-- No necesitas instalar ningún software adicional para SQLite
-- Para ver el contenido de la base de datos, puedes usar herramientas como:
-  - DB Browser for SQLite (interfaz gráfica)
-  - SQLite command line tool (línea de comandos)
-  Pero estas herramientas son opcionales, no son necesarias para que el script funcione.
+### 4. Flujo Completo (`full-run`)
+Ejecuta secuencialmente todo el pipeline de automatización de una sola vez: `scrape` ➡️ `sync` ➡️ `stock`.
+```bash
+python -X utf8 main.py full-run [opciones]
+```
 
-## Notas sobre OpenAI
-- El módulo deepseek utiliza la API de OpenAI para procesar información de productos
-- Necesitas una API key válida de OpenAI (https://platform.openai.com/api-keys)
-- La API key debe configurarse en el archivo .env como se muestra arriba
+---
+
+## 🔄 Compatibilidad Retrospectiva
+
+Si prefieres seguir ejecutando los scripts tradicionales de forma individual, puedes hacerlo sin problemas. Han sido adaptados para delegar su ejecución internamente en los servicios centralizados de `main.py`:
+
+- **`python -X utf8 scraping_coronel.py`**: Equivale a `python main.py scrape` y pregunta si deseas proceder a la subida al finalizar.
+- **`python -X utf8 subida_tienda.py`**: Equivale a `python main.py sync`.
+- **`python -X utf8 actualizar_stock.py`**: Equivale a `python main.py stock`.
+
+*Tip: Recomendamos anteponer `python -X utf8` al ejecutar los scripts para evitar problemas con la codificación de caracteres especiales/emojis en la consola de Windows.*
+
+---
+
+## 🛠️ Notas de SQLite y Logs
+
+- La base de datos local se aloja en `productos.db` y se crea automáticamente en su primera ejecución.
+- Si deseas depurar peticiones de IA, el sistema genera automáticamente reportes en la carpeta `openai_logs/` en formato JSON y texto plano.
+- Las respuestas de productos de Tiendanube se guardan localmente en caché dentro de la carpeta `app/api_cache/` para agilizar sustancialmente los tiempos de respuesta.

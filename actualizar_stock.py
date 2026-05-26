@@ -37,7 +37,8 @@ def formatear_codigo(codigo):
     return codigo
 
 # Iniciar Chrome centralizado
-driver = get_chrome_driver()
+# El driver se inicializa localmente en run_stock()
+
 
 LISTING_SELECTOR = (By.CLASS_NAME, "itemsBlock")
 NEXT_BUTTON_SELECTOR = (By.ID, "siguiente")
@@ -434,17 +435,31 @@ def scraping_all_product(driver):
 
 
 
-# Loguearnos
-login_result = login(driver, True)
-if not login_result:
-    print(Fore.RED + "✖ Scraping cancelado por fallo en el login" + Fore.RESET)
-    driver.quit()
-    exit(1)
+def run_stock():
+    # Iniciar Chrome centralizado
+    driver = get_chrome_driver()
+    try:
+        # Loguearnos
+        login_result = login(driver, True)
+        if not login_result:
+            print(Fore.RED + "✖ Scraping cancelado por fallo en el login" + Fore.RESET)
+            driver.quit()
+            return False
 
-# Ejecutar scraping y actualización de stock
-products, _ = scraping_all_product(driver)
-if products:
-    update_tiendanube_stock(products)
+        # Ejecutar scraping y actualización de stock
+        products, _ = scraping_all_product(driver)
+        if products:
+            update_tiendanube_stock(products)
+            return True
+        return False
+    except Exception as e:
+        print(Fore.RED + f"Error durante la actualización de stock: {e}" + Fore.RESET)
+        try:
+            driver.quit()
+        except:
+            pass
+        return False
 
-# Cerrar el navegador
-driver.quit()
+if __name__ == "__main__":
+    run_stock()
+
