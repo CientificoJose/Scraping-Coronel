@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from app.login import login
+from api_tiendanube import client
 from colorama import Fore, Style, init
 from app.core.browser import get_chrome_driver
 import pandas as pd
@@ -15,17 +16,8 @@ import sqlite3
 import requests
 import re
 from datetime import datetime
-from config import TIENDANUBE_STORE_ID, TIENDANUBE_ACCESS_TOKEN, TIENDANUBE_USER_AGENT
+# El stock y visibilidad se actualizan mediante el cliente centralizado importado de api_tiendanube.py
 
-# Configuración de la API de Tiendanube
-ACCESS_TOKEN = TIENDANUBE_ACCESS_TOKEN
-STORE_ID = TIENDANUBE_STORE_ID
-BASE_URL = f"https://api.tiendanube.com/v1/{STORE_ID}"
-headers = {
-    "Authentication": f"bearer {ACCESS_TOKEN}",
-    "Content-Type": "application/json",
-    "User-Agent": TIENDANUBE_USER_AGENT
-}
 
 
 # Inicializar colorama
@@ -311,25 +303,9 @@ def update_tiendanube_stock(scraped_products):
     print(Fore.CYAN + "\n🔄 Actualizando stock y visibilidad en Tienda Nube..." + Style.RESET_ALL)
 
     try:
-        # 1. Obtener todos los productos de Tienda Nube
-        tiendanube_products = []
-        page = 1
-        per_page = 200
-        total_products = 0
+        # 1. Obtener todos los productos de Tienda Nube usando el cliente
         print("Obteniendo productos de Tienda Nube...")
-        while True:
-            progress = f"[{'=' * (page % 10)}{' ' * (9 - (page % 10))}]"
-            print(f"\r📦 Página {page} {progress} ({total_products} productos)", end='', flush=True)
-            response = requests.get(f"{BASE_URL}/products", headers=headers, params={'page': page, 'per_page': per_page})
-            response.raise_for_status()
-            page_products = response.json()
-            if not page_products:
-                break
-            tiendanube_products.extend(page_products)
-            total_products += len(page_products)
-            if len(page_products) < per_page:
-                break
-            page += 1
+        tiendanube_products = client.get_all_products()
         print(f"\nTotal de productos obtenidos: {len(tiendanube_products)}")
 
         # 2. Preparar datos y contadores
@@ -365,32 +341,27 @@ def update_tiendanube_stock(scraped_products):
                     updates['cero'] += 1
                     print(f"{Fore.YELLOW}⚠️ Stock 0 para {product_name} (SKU: {sku}){Style.RESET_ALL}")
                 
-                # Actualizar stock en la API
-                try:
-                    update_url = f"{BASE_URL}/products/{product_id}/variants/{variant['id']}"
-                    response = requests.put(update_url, headers=headers, json={'stock': new_stock}, timeout=10)
-                    response.raise_for_status()
-                except requests.exceptions.RequestException as e:
+                # Actualizar stock usando el cliente centralizado
+                success = client.update_variant_stock(product_id, variant['id'], new_stock)
+                if not success:
                     updates['error'] += 1
-                    print(f"{Fore.RED}❌ Error actualizando stock de {product_name} (SKU: {sku}): {e}{Style.RESET_ALL}")
+                    print(f"{Fore.RED}❌ Error actualizando stock de {product_name} (SKU: {sku}){Style.RESET_ALL}")
                 time.sleep(0.5)
 
             # Actualizar visibilidad del producto principal
             should_be_published = product_has_stock
             if product_published != should_be_published:
-                try:
-                    update_url = f"{BASE_URL}/products/{product_id}"
-                    response = requests.put(update_url, headers=headers, json={'published': should_be_published}, timeout=10)
-                    response.raise_for_status()
+                success = client.update_product_visibility(product_id, should_be_published)
+                if success:
                     if should_be_published:
                         updates['visibles'] += 1
                         print(f"{Fore.GREEN}🟢 Producto '{product_name}' ahora visible.{Style.RESET_ALL}")
                     else:
                         updates['ocultos'] += 1
                         print(f"{Fore.RED}🔴 Producto '{product_name}' ahora oculto.{Style.RESET_ALL}")
-                except requests.exceptions.RequestException as e:
+                else:
                     updates['error'] += 1
-                    print(f"{Fore.RED}❌ Error actualizando visibilidad de {product_name}: {e}{Style.RESET_ALL}")
+                    print(f"{Fore.RED}❌ Error actualizando visibilidad de {product_name}{Style.RESET_ALL}")
             else:
                  print(f"{Fore.WHITE}⚪ Visibilidad de '{product_name}' no cambia.{Style.RESET_ALL}")
 

@@ -9,7 +9,7 @@ from app.scraping_product import consolidar_todo_en_base_de_datos, set_download_
 from selenium.webdriver.chrome.options import Options
 from app.limpiar_productos_coronel import limpiar_codigos_sqlite
 from api_tiendanube import crear_producto, buscar_producto_por_sku, actualizar_producto
-from app.deepseek import obtener_dimensiones_producto
+from app.services.ai_estimator import obtener_dimensiones_producto
 from app.scraping_product import inicializar_bd
 from app.core.browser import get_chrome_driver
 import os

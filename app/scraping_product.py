@@ -1,4 +1,4 @@
-from .deepseek import obtener_dimensiones_producto
+from app.services.ai_estimator import obtener_dimensiones_producto
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
