@@ -26,6 +26,8 @@ env_files = [
     project_root / "API_KEY.ENV",
     project_root / ".env",
     project_root / "api_key.env",
+    project_root / "API_KEY.ENV.txt",
+    project_root / "api_key.env.txt",
 ]
 
 found_env = None

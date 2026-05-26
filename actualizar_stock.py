@@ -14,15 +14,16 @@ import sqlite3
 import requests
 import re
 from datetime import datetime
+from config import TIENDANUBE_STORE_ID, TIENDANUBE_ACCESS_TOKEN, TIENDANUBE_USER_AGENT
 
 # Configuración de la API de Tiendanube
-ACCESS_TOKEN = "cdcad052f53bae4972979dbf6900925d4e9a36dc"
-STORE_ID = "5950659"
+ACCESS_TOKEN = TIENDANUBE_ACCESS_TOKEN
+STORE_ID = TIENDANUBE_STORE_ID
 BASE_URL = f"https://api.tiendanube.com/v1/{STORE_ID}"
 headers = {
     "Authentication": f"bearer {ACCESS_TOKEN}",
     "Content-Type": "application/json",
-    "User-Agent": "API-KEY (jgstore244@gmail.com)"
+    "User-Agent": TIENDANUBE_USER_AGENT
 }
 
 

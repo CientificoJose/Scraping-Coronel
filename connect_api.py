@@ -1,14 +1,15 @@
 import requests
+from config import TIENDANUBE_STORE_ID, TIENDANUBE_ACCESS_TOKEN, TIENDANUBE_USER_AGENT
 
 # Configuración básica
-STORE_ID = "5950659"
-ACCESS_TOKEN = "cdcad052f53bae4972979dbf6900925d4e9a36dc"  # Usando tu token del archivo API_KEY.ENV
+STORE_ID = TIENDANUBE_STORE_ID
+ACCESS_TOKEN = TIENDANUBE_ACCESS_TOKEN
 BASE_URL = f"https://api.tiendanube.com/v1/{STORE_ID}"
 
 # Headers necesarios
 headers = {
     "Authentication": f"bearer {ACCESS_TOKEN}",
-    "User-Agent": "API-KEY (jgstore244@gmail.com)",
+    "User-Agent": TIENDANUBE_USER_AGENT,
     "Content-Type": "application/json"
 }
 

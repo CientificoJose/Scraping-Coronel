@@ -10,18 +10,17 @@ import json
 from tqdm import tqdm
 import base64
 from app.deepseek import obtener_dimensiones_producto
-from config import DOWNLOAD_IMAGES
+from config import DOWNLOAD_IMAGES, TIENDANUBE_STORE_ID, TIENDANUBE_ACCESS_TOKEN, TIENDANUBE_USER_AGENT
 
 # Variables necesarias
-ACCESS_TOKEN = "cdcad052f53bae4972979dbf6900925d4e9a36dc"  # Tu token de acceso obtenido
-STORE_ID = "5950659"  # El ID de tu tienda (por ejemplo, 5950659)
+ACCESS_TOKEN = TIENDANUBE_ACCESS_TOKEN  # Tu token de acceso obtenido
+STORE_ID = TIENDANUBE_STORE_ID  # El ID de tu tienda
 BASE_URL = f"https://api.tiendanube.com/v1/{STORE_ID}"
 
 headers = {
         "Authentication": f"bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json",
-        "User-Agent": "API-KEY (jgstore244@gmail.com)"
-
+        "User-Agent": TIENDANUBE_USER_AGENT
     }
 
 

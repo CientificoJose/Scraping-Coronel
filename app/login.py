@@ -10,6 +10,14 @@ import os
 import shutil
 from datetime import datetime
 
+try:
+    from config import CORONEL_CUIT, CORONEL_PASSWORD
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent.parent.resolve()))
+    from config import CORONEL_CUIT, CORONEL_PASSWORD
+
 # Variable global para controlar el estado del botón
 button_clicked = False
 
@@ -119,18 +127,14 @@ def login(driver, show_button=True):
             (By.CSS_SELECTOR, 'input[formcontrolname="usuarioCuit"]')
         ))
         cuit_field.clear()
-        cuit_field.send_keys('27958596508')
-        #cuit_field.send_keys('96968817')
-        #27958596508
+        cuit_field.send_keys(CORONEL_CUIT)
         
         # 3. Ingresar contraseña
         password_field = wait.until(EC.element_to_be_clickable(
             (By.CSS_SELECTOR, 'input[formcontrolname="usuarioPassword"]')
         ))
         password_field.clear()
-        password_field.send_keys('95859650')
-        #password_field.send_keys('12180824')
-        #95859650
+        password_field.send_keys(CORONEL_PASSWORD)
         
         # 4. Click en Ingresar
         login_button = wait.until(EC.element_to_be_clickable(
