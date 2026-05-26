@@ -35,172 +35,30 @@ def formatear_codigo(codigo):
         return f"{prefijo}-{numero}{variante}"
     return codigo
 
+from app.core.db import (
+    inicializar_bd as core_inicializar_bd,
+    obtener_codigo_barra as core_obtener_codigo_barra,
+    consolidar_productos as core_consolidar_productos
+)
+
 def obtener_codigo_barra(code, db_path):
-    """Consulta rápida a SQLite"""
-    try:
-        with closing(sqlite3.connect(db_path)) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT codigo_barra FROM productos WHERE codigo = ?",
-                (code.strip(),)
-            )
-            result = cursor.fetchone()
-            return result[0] if result else ""
-    except Exception as e:
-        print(f"Error consultando SQLite: {str(e)}")
-        return ""
+    """Consulta rápida a SQLite delegada al módulo core"""
+    return core_obtener_codigo_barra(code, db_path)
 
 def inicializar_bd(excel_path='productos_coronel'):
-    """Convierte el Excel más reciente a SQLite para consultas rápidas"""
-    try:
-        # 1. Configurar rutas
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        excel_dir = os.path.join(base_dir, excel_path)
-        db_path = os.path.join(base_dir, 'productos.db')
-        
-        # 2. Buscar Excel más reciente
-        archivos = [f for f in os.listdir(excel_dir) if f.lower().endswith('.xlsx')]
-        if not archivos:
-            return None
-            
-        archivo_reciente = max(archivos, key=lambda f: os.path.getmtime(os.path.join(excel_dir, f)))
-        ruta_excel = os.path.join(excel_dir, archivo_reciente)
-        
-        # 3. Crear/actualizar SQLite
-        with closing(sqlite3.connect(db_path)) as conn:
-            cursor = conn.cursor()
-            
-            # Crear tabla con todas las columnas necesarias
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS productos (
-                    codigo TEXT PRIMARY KEY,
-                    codigo_barra TEXT,
-                    descripcion TEXT,
-                    precio TEXT,
-                    imagen_url TEXT,
-                    imagen_local TEXT,
-                    variante TEXT,
-                    categoria TEXT,
-                    subcategoria TEXT,
-                    peso_kg TEXT,
-                    ancho_cm TEXT,
-                    alto_cm TEXT,
-                    profundidad_cm TEXT
-                )
-            ''')
-            
-            # Cargar datos desde Excel
-            wb = openpyxl.load_workbook(ruta_excel)
-            ws = wb.active
-            
-            # Limpiar datos existentes
-            cursor.execute("DELETE FROM productos")
-            #print(f"Se borro todo de la base de datos")
-            
-            
-            # Insertar nuevos datos (solo código y código de barras del Excel)
-            for row in range(2, ws.max_row + 1):
-                codigo = str(ws.cell(row=row, column=1).value).strip().replace(" ", "")  # Columna A: Código
-                codigo_barra = str(ws.cell(row=row, column=3).value).strip()  # Columna C: C.Barra
-                
-                if codigo:
-                    cursor.execute(
-                        "INSERT OR REPLACE INTO productos (codigo, codigo_barra) VALUES (?, ?)",
-                        (codigo, codigo_barra)
-                    )
-            
-            conn.commit()
-            
-            # Hacer la variable db_path accesible globalmente
-            DB_PATH = db_path
-            
-            return db_path
-        
-    except Exception as e:
-        print(f"Error inicializando SQLite: {str(e)}")
-        return None
+    """Inicialización delegada al módulo core"""
+    return core_inicializar_bd(excel_path)
 
 def consolidar_todo_en_base_de_datos(todos_los_productos):
-    """
-    Guarda todos los datos de productos en la base de datos SQLite
-    
-    Args:
-        todos_los_productos: Lista de diccionarios con los datos de los productos
-    """
-    try:
-        if not hasattr(scraping_product, 'db_path') or not scraping_product.db_path:
-            scraping_product.db_path = inicializar_bd()
-            
-        if not scraping_product.db_path:
-            print("Error: No se pudo inicializar la base de datos")
-            return False
-            
-        with closing(sqlite3.connect(scraping_product.db_path)) as conn:
-            cursor = conn.cursor()
-            
-            # 1. Insertar/actualizar productos
-            for producto in todos_los_productos:
-                codigo = producto.get('codigo', '')
-                
-                # Si el código contiene guion, siempre INSERT (nuevo producto)
-                if '-' in codigo:
-                    cursor.execute("""
-                        INSERT INTO productos (
-                            codigo, codigo_barra, descripcion, precio, 
-                            imagen_url, imagen_local, variante, categoria, subcategoria,
-                            peso_kg, ancho_cm, alto_cm, profundidad_cm
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        codigo,
-                        producto.get('codigo_de_barras', ''),
-                        producto.get('descripcion', ''),
-                        producto.get('precio', ''),
-                        producto.get('imagen_url', ''),
-                        producto.get('imagen_local', ''),
-                        producto.get('variante', ''),
-                        producto.get('categoria', ''),
-                        producto.get('subcategoria', ''),
-                        producto.get('peso_kg', ''),
-                        producto.get('ancho_cm', ''),
-                        producto.get('alto_cm', ''),
-                        producto.get('profundidad_cm', '')
-                    ))
-                else:
-                    # Para códigos sin guion, mantener lógica de INSERT OR REPLACE
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO productos (
-                            codigo, codigo_barra, descripcion, precio, 
-                            imagen_url, imagen_local, variante, categoria, subcategoria,
-                            peso_kg, ancho_cm, alto_cm, profundidad_cm
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        codigo,
-                        producto.get('codigo_de_barras', ''),
-                        producto.get('descripcion', ''),
-                        producto.get('precio', ''),
-                        producto.get('imagen_url', ''),
-                        producto.get('imagen_local', ''),
-                        producto.get('variante', ''),
-                        producto.get('categoria', ''),
-                        producto.get('subcategoria', ''),
-                        producto.get('peso_kg', ''),
-                        producto.get('ancho_cm', ''),
-                        producto.get('alto_cm', ''),
-                        producto.get('profundidad_cm', '')
-                    ))
-            
-            # 2. Eliminar productos con descripción vacía
-            cursor.execute("DELETE FROM productos WHERE descripcion = '' OR descripcion IS NULL")
-            deleted_count = cursor.rowcount
-            
-            conn.commit()
-            print(f"Se consolidaron {len(todos_los_productos)} productos en la base de datos")
-            # print(f"Se eliminaron {deleted_count} productos con descripción vacía")
-            return todos_los_productos
-            
-    except Exception as e:
-        print(f"Error consolidando productos en SQLite: {str(e)}")
+    """Consolidación delegada al módulo core"""
+    if not hasattr(scraping_product, 'db_path') or not scraping_product.db_path:
+        scraping_product.db_path = inicializar_bd()
+        
+    if not scraping_product.db_path:
+        print("Error: No se pudo inicializar la base de datos")
         return False
+        
+    return core_consolidar_productos(todos_los_productos, scraping_product.db_path)
     
 def scraping_product(driver, max_retries=3, wait_time=10):
     """

@@ -11,6 +11,7 @@ from app.limpiar_productos_coronel import limpiar_codigos_sqlite
 from api_tiendanube import crear_producto, buscar_producto_por_sku, actualizar_producto
 from app.deepseek import obtener_dimensiones_producto
 from app.scraping_product import inicializar_bd
+from app.core.browser import get_chrome_driver
 import os
 import openpyxl
 from datetime import datetime
@@ -41,16 +42,8 @@ GANANCIA_PORCENTAJE = preguntar_porcentaje()
 
 
 
-# Configurar opciones de Chrome
-chrome_options = Options()
-chrome_options.add_argument("--start-maximized")  # Abrir maximizado
-chrome_options.add_argument('--log-level=3')  # Desactivar la mayoría de los logs
-chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])  # Desactivar mensajes de logging
-chrome_options.add_argument("--disable-logging")  # Desactivar logging
-chrome_options.add_argument("--disable-dev-shm-usage")  # Desactivar mensajes de memoria compartida
-
-# Inicializar driver
-driver = webdriver.Chrome(options=chrome_options)
+# Inicializar driver centralizado
+driver = get_chrome_driver()
 
 #Loguearnos
 login_result = login(driver)

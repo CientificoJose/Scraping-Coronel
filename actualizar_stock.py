@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from app.login import login
 from colorama import Fore, Style, init
+from app.core.browser import get_chrome_driver
 import pandas as pd
 import time
 import os
@@ -43,19 +44,8 @@ def formatear_codigo(codigo):
         return f"{prefijo}-{numero}{variante}"
     return codigo
 
-# Configurar Chrome
-chrome_options = Options()
-chrome_options.add_argument('--start-maximized')
-chrome_options.add_argument('--disable-extensions')
-chrome_options.add_experimental_option('prefs', {
-    'download.default_directory': os.path.join(os.path.dirname(__file__), 'productos_coronel'),
-    'download.prompt_for_download': False,
-    'download.directory_upgrade': True,
-    'safebrowsing.enabled': True
-})
-
-# Iniciar Chrome
-driver = webdriver.Chrome(options=chrome_options)
+# Iniciar Chrome centralizado
+driver = get_chrome_driver()
 
 LISTING_SELECTOR = (By.CLASS_NAME, "itemsBlock")
 NEXT_BUTTON_SELECTOR = (By.ID, "siguiente")

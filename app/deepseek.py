@@ -149,38 +149,10 @@ def obtener_dimensiones_lote(productos: List[Dict], categoria: str) -> List[Dict
 
 def actualizar_dimensiones_en_bd(productos: List[Dict], dimensiones: List[Dict], db_path: str):
     """
-    Actualiza la base de datos con las dimensiones obtenidas
-    
-    Args:
-        productos: Lista original de productos
-        dimensiones: Lista de dimensiones obtenidas
-        db_path: Ruta a la base de datos SQLite
+    Actualiza la base de datos con las dimensiones obtenidas (delegado a core)
     """
-    try:
-        with closing(sqlite3.connect(db_path)) as conn:
-            cursor = conn.cursor()
-            
-            for producto, dim in zip(productos, dimensiones):
-                cursor.execute("""
-                    UPDATE productos SET
-                        peso_kg = ?,
-                        ancho_cm = ?,
-                        alto_cm = ?,
-                        profundidad_cm = ?
-                    WHERE codigo = ?
-                """, (
-                    dim.get('peso_kg', ''),
-                    dim.get('ancho_cm', ''),
-                    dim.get('alto_cm', ''),
-                    dim.get('profundidad_cm', ''),
-                    producto['codigo']
-                ))
-            
-            conn.commit()
-            print(f"Actualizadas dimensiones para {len(dimensiones)} productos")
-            
-    except Exception as e:
-        print(f"Error actualizando dimensiones en BD: {str(e)}")
+    from app.core.db import actualizar_dimensiones_en_bd as core_actualizar_dimensiones_en_bd
+    return core_actualizar_dimensiones_en_bd(productos, dimensiones, db_path)
 
 
 

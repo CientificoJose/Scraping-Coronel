@@ -1,6 +1,6 @@
 from api_tiendanube import crear_producto, buscar_producto_por_sku, actualizar_producto, limpiar_cache_productos
 from colorama import Fore, Style
-import sqlite3
+from app.core.db import obtener_productos_de_db as core_obtener_productos_de_db
 import json
 import time
 import os
@@ -42,37 +42,7 @@ print(f"Se ingresó {GANANCIA_PORCENTAJE}% como ganancia porcentaje")
 print(f"Descarga de imágenes: {'Activada' if DOWNLOAD_IMAGES == 't' else 'Desactivada'}")
 
 def obtener_productos_de_db():
-    # Conectar a la base de datos
-    conexion = sqlite3.connect(PATH)
-    cursor = conexion.cursor()
-    
-    # Obtener todos los productos
-    cursor.execute("SELECT * FROM productos")
-    productos = cursor.fetchall()
-    
-    # Convertir a lista de diccionarios con la estructura deseada
-    lista_productos = []
-    for producto in productos:
-        lista_productos.append({
-            'codigo': producto[0],          # codigo
-            'codigo_de_barras': producto[1], # codigo_barra
-            'descripcion': producto[2],     # descripcion
-            'precio': producto[3],          # precio
-            'imagen_url': producto[4],      # imagen_url
-            'imagen_local': producto[5],    # imagen_local
-            'variante': producto[6].replace('-', '') if producto[6] else None,  # variante
-            'categoria': producto[7],       # categoria
-            'subcategoria': producto[8],    # subcategoria
-            'peso_kg': producto[9],         # peso_kg
-            'ancho_cm': producto[10],       # ancho_cm
-            'alto_cm': producto[11],        # alto_cm
-            'profundidad_cm': producto[12]  # profundidad_cm
-        })
-    
-    # Cerrar conexión
-    conexion.close()
-    
-    return lista_productos
+    return core_obtener_productos_de_db(PATH)
 
 # Obtener los productos en formato JSON
 todos_los_productos = obtener_productos_de_db()
