@@ -79,20 +79,33 @@ def descargar_lista_precios(driver, download_dir):
         #print(Fore.YELLOW + "Esperando la descarga del archivo..." + Fore.RESET)
        
         
-        # 5. Mover el archivo descargado a la carpeta productos_coronel
-        downloads_folder = os.path.expanduser("~\\Downloads")
-        # Buscar el archivo más reciente que contenga "Lista de precios"
-        files = [f for f in os.listdir(downloads_folder) if "Lista de Precios" in f]
+        # 5. Buscar el archivo descargado en la carpeta de destino o en Downloads de usuario como fallback
+        files = [f for f in os.listdir(download_dir) if "Lista de Precios" in f]
+        latest_file = None
+        
         if files:
-            latest_file = max([os.path.join(downloads_folder, f) for f in files], key=os.path.getctime)
+            latest_file = max([os.path.join(download_dir, f) for f in files], key=os.path.getctime)
+        else:
+            # Fallback: buscar en la carpeta de descargas del usuario por si Chrome ignoró la preferencia
+            downloads_folder = os.path.expanduser("~\\Downloads")
+            try:
+                files_fallback = [f for f in os.listdir(downloads_folder) if "Lista de Precios" in f]
+                if files_fallback:
+                    latest_file = max([os.path.join(downloads_folder, f) for f in files_fallback], key=os.path.getctime)
+            except Exception:
+                pass
+                
+        if latest_file:
             # Crear nombre de archivo con timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             new_filename = f"lista_precios_{timestamp}.xlsx"
             new_path = os.path.join(download_dir, new_filename)
             
-            # Mover el archivo
-            shutil.move(latest_file, new_path)
-            #print(Fore.GREEN + f"✔ Excel descargado y movido a: {new_path}" + Fore.RESET)
+            # Renombrar si está en el mismo directorio, mover si viene de descargas
+            if os.path.dirname(os.path.normpath(latest_file)) == os.path.normpath(download_dir):
+                os.rename(latest_file, new_path)
+            else:
+                shutil.move(latest_file, new_path)
             return True
         else:
             print(Fore.RED + "✖ No se encontró el archivo descargado" + Fore.RESET)

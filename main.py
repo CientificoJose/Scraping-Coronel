@@ -16,28 +16,25 @@ def ejecutar_menu_interactivo():
     print("\nSeleccione una opción ingresando su número:")
     print(f"\n  [{Fore.GREEN}1{Style.RESET_ALL}] ⚡ {Fore.GREEN}Scraping + Subida Rápida (Recomendado){Style.RESET_ALL}")
     print("      (Extrae productos del catálogo y los sube a Tiendanube)")
-    print(f"\n  [{Fore.YELLOW}2{Style.RESET_ALL}] 🔄 {Fore.YELLOW}Pipeline Completo (Scraping + Subida + Stock){Style.RESET_ALL}")
-    print("      (Sincroniza catálogo, stock y oculta discontinuados)")
-    print(f"\n  [{Fore.CYAN}3{Style.RESET_ALL}] 🔍 Solo Scraping (Actualiza base de datos local)")
-    print(f"  [{Fore.CYAN}4{Style.RESET_ALL}] 📤 Solo Sincronizar (Sube productos locales a Tiendanube)")
-    print(f"  [{Fore.CYAN}5{Style.RESET_ALL}] 📦 Solo Actualizar Stock (Actualiza stock/visibilidad)")
-    print(f"  [{Fore.RED}6{Style.RESET_ALL}] ❌ Salir")
+    print(f"\n  [{Fore.YELLOW}2{Style.RESET_ALL}] 📦 {Fore.YELLOW}Solo Actualizar Stock{Style.RESET_ALL}")
+    print("      (Actualiza stock de catálogo en Tiendanube e inactiva discontinuados)")
+    print(f"\n  [{Fore.RED}3{Style.RESET_ALL}] ❌ Salir")
     print("\n" + "-"*60)
     
     while True:
-        opcion = input(Fore.CYAN + "Selección (1-6): " + Style.RESET_ALL).strip()
-        if opcion in ["1", "2", "3", "4", "5", "6"]:
+        opcion = input(Fore.CYAN + "Selección (1-3): " + Style.RESET_ALL).strip()
+        if opcion in ["1", "2", "3"]:
             break
-        print(Fore.RED + "Opción inválida. Ingrese un número de 1 a 6." + Style.RESET_ALL)
+        print(Fore.RED + "Opción inválida. Ingrese un número de 1 a 3." + Style.RESET_ALL)
         
-    if opcion == "6":
+    if opcion == "3":
         print(Fore.YELLOW + "Saliendo del sistema..." + Style.RESET_ALL)
         return
 
-    # Pedir ganancia para las opciones de scrape/sync
+    # Pedir ganancia y descargas sólo para la opción 1
     ganancia = None
     download_images = None
-    if opcion in ["1", "2", "3", "4"]:
+    if opcion == "1":
         # Preguntar ganancia
         while True:
             resp_g = input(Fore.CYAN + "Ingrese porcentaje de ganancia (Presione Enter para usar 40%): " + Style.RESET_ALL).strip()
@@ -77,32 +74,6 @@ def ejecutar_menu_interactivo():
         print(Fore.GREEN + "\n★ Proceso completado exitosamente ★" + Style.RESET_ALL)
         
     elif opcion == "2":
-        # full-run
-        print(Fore.CYAN + "\n=== [INICIANDO PIPELINE COMPLETO] ===" + Style.RESET_ALL)
-        print(Fore.CYAN + "\n--- Paso 1: Scraping ---" + Style.RESET_ALL)
-        success, final_ganancia, final_download = run_scrape(ganancia, download_images)
-        if not success:
-            print(Fore.RED + "\n❌ Pipeline detenido: Scrape falló." + Style.RESET_ALL)
-            return
-            
-        print(Fore.CYAN + "\n--- Paso 2: Sincronización de Productos ---" + Style.RESET_ALL)
-        run_sync(final_ganancia, final_download)
-        
-        print(Fore.CYAN + "\n--- Paso 3: Sincronización de Stock ---" + Style.RESET_ALL)
-        run_stock()
-        print(Fore.GREEN + "\n★ Pipeline completo finalizado ★" + Style.RESET_ALL)
-        
-    elif opcion == "3":
-        # scrape
-        print(Fore.CYAN + "\n=== [EJECUTANDO SCRAPE] ===" + Style.RESET_ALL)
-        run_scrape(ganancia, download_images)
-        
-    elif opcion == "4":
-        # sync
-        print(Fore.CYAN + "\n=== [EJECUTANDO SYNC] ===" + Style.RESET_ALL)
-        run_sync(ganancia, download_images)
-        
-    elif opcion == "5":
         # stock
         print(Fore.CYAN + "\n=== [EJECUTANDO STOCK] ===" + Style.RESET_ALL)
         run_stock()
