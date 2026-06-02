@@ -24,3 +24,6 @@
 *.jpg
 *.png
 *.jpeg
+
+# Accesos directos locales
+*.lnk

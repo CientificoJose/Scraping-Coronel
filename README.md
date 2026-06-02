@@ -83,11 +83,15 @@ OPENAI_API_KEY=sk-proj-xxxx...
 
 ## 🚀 Ejecución Simplificada (Recomendado para Clientes)
 
-Para la comodidad del usuario final, se incluye un lanzador interactivo:
+Para la comodidad del usuario final, se incluye un lanzador interactivo inteligente:
 
 1. **Doble Clic** en el archivo [Sincronizar_JG_Store.bat](file:///d:/Repositorios/Scraping-Coronel/Sincronizar_JG_Store.bat) en la raíz del proyecto.
-2. Se abrirá una ventana de consola con un menú interactivo numerado.
-3. Seleccione la tarea deseada (ej. `1` para el flujo rápido de scraping + subida) y configure los valores sugeridos presionando **Enter**.
+2. **Auto-Updater**: Al abrirse, el sistema verificará automáticamente si existe una versión más reciente en GitHub. Si es así, ofrecerá descargarla e instalarla de forma automática (`git pull`).
+3. **Verificador de Dependencias**: Inmediatamente después, el sistema leerá el archivo `requirements.txt` y verificará si hay librerías faltantes o desactualizadas, ofreciendo instalarlas automáticamente para prevenir crashes del sistema.
+4. **Menú Interactivo**: Finalmente, se abrirá un menú simplificado de 3 opciones:
+   * **`1` - Scraping + Subida Rápida (Recomendado)**: Extrae productos y los sube a Tiendanube preguntando de forma interactiva la ganancia (las descargas de imágenes se ejecutan automáticamente por defecto).
+   * **`2` - Solo Actualizar Stock**: Sincroniza stocks de catálogo e inactiva discontinuados en Tiendanube.
+   * **`3` - Salir**.
 
 ---
 

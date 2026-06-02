@@ -1,5 +1,20 @@
 import argparse
 import sys
+
+# Asegurar soporte de caracteres especiales y emojis en la consola sin crashear
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+import os
+import shutil
+import subprocess
+import time
 from colorama import Fore, Style, init
 
 from scraping_coronel import run_scrape
@@ -9,7 +24,104 @@ from config import preguntar_download, preguntar_porcentaje
 
 init(autoreset=True)
 
+def verificar_actualizaciones():
+    """
+    Compara de manera silenciosa la versión local con la remota en GitHub
+    y ofrece al usuario actualizar mediante git pull.
+    """
+    if not shutil.which("git"):
+        return
+        
+    try:
+        print(Fore.CYAN + "🔍 Buscando actualizaciones en GitHub..." + Style.RESET_ALL)
+        
+        # 1. Hacer fetch silencioso (timeout 5s)
+        subprocess.run(["git", "fetch"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5, check=True)
+        
+        # 2. Comparar rama local y remoto-tracking
+        local_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        remote_hash = subprocess.check_output(["git", "rev-parse", "@{u}"], text=True).strip()
+        
+        if local_hash != remote_hash:
+            # Obtener cantidad de commits que nos faltan
+            behind_count = subprocess.check_output(
+                ["git", "rev-list", f"HEAD..{remote_hash}", "--count"], text=True
+            ).strip()
+            
+            if int(behind_count) > 0:
+                print(Fore.YELLOW + f"\n⚠️  ¡Nueva versión disponible en GitHub! (Tu copia local está {behind_count} versión/es por detrás)" + Style.RESET_ALL)
+                resp = input(Fore.CYAN + "¿Deseas descargar e instalar la última versión automáticamente? (s/n) [Enter para Sí]: " + Style.RESET_ALL).strip().lower()
+                
+                if resp in ["", "s", "si"]:
+                    print(Fore.YELLOW + "📥 Descargando actualizaciones (git pull)..." + Style.RESET_ALL)
+                    pull_result = subprocess.run(["git", "pull"], capture_output=True, text=True, timeout=20)
+                    if pull_result.returncode == 0:
+                        print(Fore.GREEN + "✔ ¡Actualización completada con éxito! Por favor, reinicia el programa para aplicar los cambios." + Style.RESET_ALL)
+                        sys.exit(0)
+                    else:
+                        print(Fore.RED + f"❌ Error al intentar actualizar: {pull_result.stderr}" + Style.RESET_ALL)
+                        print(Fore.YELLOW + "Continuando con la versión actual..." + Style.RESET_ALL)
+                        time.sleep(2)
+    except subprocess.TimeoutExpired:
+        print(Fore.YELLOW + "⚠ No se pudo comprobar si hay actualizaciones (tiempo de espera agotado, verifica tu conexión)." + Style.RESET_ALL)
+        time.sleep(1.5)
+    except Exception:
+        # Falla de forma totalmente silenciosa para que no impida correr el programa
+        pass
+
+def verificar_dependencias():
+    """
+    Verifica que todas las librerías listadas en requirements.txt estén instaladas
+    y en la versión correcta, ofreciendo instalarlas si falta alguna.
+    """
+    print(Fore.CYAN + "🔍 Verificando dependencias necesarias..." + Style.RESET_ALL)
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    req_file = os.path.join(base_dir, "requirements.txt")
+    
+    if not os.path.exists(req_file):
+        return
+        
+    try:
+        import pkg_resources
+    except ImportError:
+        # Si pkg_resources no está, intentamos usar pip install para garantizar que todo funcione
+        return
+        
+    try:
+        with open(req_file, "r", encoding="utf-8") as f:
+            requirements = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+            
+        missing = []
+        for req in requirements:
+            try:
+                pkg_resources.require(req)
+            except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict):
+                missing.append(req)
+                
+        if missing:
+            print(Fore.YELLOW + f"\n⚠️  Faltan dependencias requeridas o desactualizadas: {', '.join(missing)}" + Style.RESET_ALL)
+            resp = input(Fore.CYAN + "¿Deseas instalar/actualizar las dependencias necesarias automáticamente? (s/n) [Enter para Sí]: " + Style.RESET_ALL).strip().lower()
+            
+            if resp in ["", "s", "si"]:
+                print(Fore.YELLOW + "📥 Instalando dependencias (pip install)..." + Style.RESET_ALL)
+                try:
+                    subprocess.run([sys.executable, "-m", "pip", "install", "-r", req_file], check=True)
+                    print(Fore.GREEN + "✔ Dependencias instaladas con éxito." + Style.RESET_ALL)
+                except Exception as e:
+                    print(Fore.RED + f"❌ Error instalando dependencias: {e}" + Style.RESET_ALL)
+                    time.sleep(2)
+    except Exception:
+        # Falla silenciosamente
+        pass
+
 def ejecutar_menu_interactivo():
+    # 1. Comprobar si hay actualizaciones
+    verificar_actualizaciones()
+    
+    # 2. Verificar dependencias instaladas
+    verificar_dependencias()
+
     print(Fore.CYAN + "="*60)
     print("           SISTEMA DE SINCRONIZACIÓN JG-STORE")
     print("="*60 + Style.RESET_ALL)
@@ -47,16 +159,8 @@ def ejecutar_menu_interactivo():
             except ValueError:
                 print(Fore.RED + "Debe ingresar un número entero válido." + Style.RESET_ALL)
                 
-        # Preguntar descargas
-        while True:
-            resp_d = input(Fore.CYAN + "¿Desea descargar las imágenes? (s/n) (Presione Enter para NO): " + Style.RESET_ALL).strip().lower()
-            if resp_d in ["", "n"]:
-                download_images = "f"
-                break
-            elif resp_d == "s":
-                download_images = "t"
-                break
-            print(Fore.RED + "Respuesta inválida. Ingrese 's' o 'n'." + Style.RESET_ALL)
+        # Las descargas de imágenes están siempre activadas por defecto
+        download_images = "t"
 
     print(Fore.CYAN + "\nIniciando proceso..." + Style.RESET_ALL)
     
