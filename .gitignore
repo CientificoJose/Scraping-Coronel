@@ -27,3 +27,6 @@
 
 # Accesos directos locales
 *.lnk
+
+# Archivo de saldo local de OpenAI
+openai_saldo.json
