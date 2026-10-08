@@ -1,0 +1,2676 @@
+{
+  "metadata": {
+    "project_name": "Scraping-Coronel",
+    "total_modules": 24,
+    "generated_by": "tools/generate_code_graph.py"
+  },
+  "nodes": {
+    "actualizar_stock.py": {
+      "file": "actualizar_stock.py",
+      "lines_of_code": 474,
+      "imports": [
+        {
+          "from": "selenium",
+          "name": "webdriver",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.chrome.options",
+          "name": "Options",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.support.ui",
+          "name": "WebDriverWait",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.support",
+          "name": "expected_conditions",
+          "alias": "EC"
+        },
+        {
+          "from": "selenium.webdriver.common.by",
+          "name": "By",
+          "alias": null
+        },
+        {
+          "from": "selenium.common.exceptions",
+          "name": "TimeoutException",
+          "alias": null
+        },
+        {
+          "from": "selenium.common.exceptions",
+          "name": "StaleElementReferenceException",
+          "alias": null
+        },
+        {
+          "from": "app.login",
+          "name": "login",
+          "alias": null
+        },
+        {
+          "from": "api_tiendanube",
+          "name": "client",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "init",
+          "alias": null
+        },
+        {
+          "from": "app.core.browser",
+          "name": "get_chrome_driver",
+          "alias": null
+        },
+        {
+          "from": "app.core.logger",
+          "name": "registrar_error",
+          "alias": null
+        },
+        {
+          "module": "pandas",
+          "alias": "pd"
+        },
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "glob",
+          "alias": null
+        },
+        {
+          "module": "sqlite3",
+          "alias": null
+        },
+        {
+          "module": "requests",
+          "alias": null
+        },
+        {
+          "module": "re",
+          "alias": null
+        },
+        {
+          "from": "datetime",
+          "name": "datetime",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "formatear_codigo",
+          "args": [
+            "codigo"
+          ],
+          "line": 27,
+          "docstring": ""
+        },
+        {
+          "name": "get_current_page_from_url",
+          "args": [
+            "driver"
+          ],
+          "line": 54,
+          "docstring": "Extrae el número de página actual de la URL."
+        },
+        {
+          "name": "wait_for_page_ready",
+          "args": [
+            "driver",
+            "timeout"
+          ],
+          "line": 66,
+          "docstring": "Espera a que la página esté lista: sin spinners/loading activos."
+        },
+        {
+          "name": "is_last_page",
+          "args": [
+            "driver",
+            "be_conservative"
+          ],
+          "line": 95,
+          "docstring": "Intenta determinar si no quedan más páginas o productos visibles."
+        },
+        {
+          "name": "wait_for_listing",
+          "args": [
+            "driver",
+            "wait_time",
+            "max_retries"
+          ],
+          "line": 138,
+          "docstring": "Asegura que el listado de productos esté presente con reintentos."
+        },
+        {
+          "name": "scraping_product",
+          "args": [
+            "driver",
+            "max_retries",
+            "wait_time"
+          ],
+          "line": 212,
+          "docstring": "Extrae información de productos"
+        },
+        {
+          "name": "update_tiendanube_stock",
+          "args": [
+            "scraped_products"
+          ],
+          "line": 304,
+          "docstring": "Actualiza el stock y la visibilidad de los productos en Tienda Nube."
+        },
+        {
+          "name": "scraping_all_product",
+          "args": [
+            "driver"
+          ],
+          "line": 390,
+          "docstring": "Extrae información de productos de TODAS las páginas disponibles"
+        },
+        {
+          "name": "run_stock",
+          "args": [],
+          "line": 447,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "Selenium (Coronel Mayorista)",
+        "Tiendanube REST API"
+      ]
+    },
+    "api_tiendanube.py": {
+      "file": "api_tiendanube.py",
+      "lines_of_code": 40,
+      "imports": [
+        {
+          "from": "config",
+          "name": "TIENDANUBE_STORE_ID",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "TIENDANUBE_ACCESS_TOKEN",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "TIENDANUBE_USER_AGENT",
+          "alias": null
+        },
+        {
+          "from": "app.services.tiendanube",
+          "name": "TiendanubeClient",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "limpiar_cache_productos",
+          "args": [],
+          "line": 12,
+          "docstring": ""
+        },
+        {
+          "name": "buscar_id_categoria",
+          "args": [
+            "nombre",
+            "parent_id"
+          ],
+          "line": 15,
+          "docstring": ""
+        },
+        {
+          "name": "crear_categoria",
+          "args": [
+            "nombre",
+            "parent_id"
+          ],
+          "line": 18,
+          "docstring": ""
+        },
+        {
+          "name": "obtener_categorias_tienda",
+          "args": [],
+          "line": 21,
+          "docstring": ""
+        },
+        {
+          "name": "obtener_ids_categorias",
+          "args": [
+            "producto"
+          ],
+          "line": 24,
+          "docstring": ""
+        },
+        {
+          "name": "buscar_producto_por_sku",
+          "args": [
+            "sku"
+          ],
+          "line": 27,
+          "docstring": ""
+        },
+        {
+          "name": "obtener_id_variante",
+          "args": [
+            "producto_id"
+          ],
+          "line": 30,
+          "docstring": ""
+        },
+        {
+          "name": "agregar_imagen",
+          "args": [
+            "producto_id",
+            "imagen_url"
+          ],
+          "line": 33,
+          "docstring": ""
+        },
+        {
+          "name": "crear_producto",
+          "args": [
+            "producto",
+            "PATH",
+            "GANANCIA_PORCENTAJE",
+            "DOWNLOAD_IMAGES"
+          ],
+          "line": 36,
+          "docstring": ""
+        },
+        {
+          "name": "actualizar_producto",
+          "args": [
+            "producto_id",
+            "producto",
+            "ganancia_porcentaje",
+            "DOWNLOAD_IMAGES"
+          ],
+          "line": 39,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "Tiendanube REST API"
+      ]
+    },
+    "config.py": {
+      "file": "config.py",
+      "lines_of_code": 65,
+      "imports": [
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "module": "threading",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "from": "pathlib",
+          "name": "Path",
+          "alias": null
+        },
+        {
+          "from": "dotenv",
+          "name": "load_dotenv",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "set_download_images",
+          "args": [
+            "value"
+          ],
+          "line": 43,
+          "docstring": "Función para cambiar el estado de descarga de imágenes"
+        },
+        {
+          "name": "preguntar_download",
+          "args": [],
+          "line": 48,
+          "docstring": ""
+        },
+        {
+          "name": "preguntar_porcentaje",
+          "args": [],
+          "line": 51,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "connect_api.py": {
+      "file": "connect_api.py",
+      "lines_of_code": 43,
+      "imports": [
+        {
+          "module": "requests",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "TIENDANUBE_STORE_ID",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "TIENDANUBE_ACCESS_TOKEN",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "TIENDANUBE_USER_AGENT",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "test_connection",
+          "args": [],
+          "line": 16,
+          "docstring": "Prueba básica de conexión con la API"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "contigencia_borrar_Categorias.py": {
+      "file": "contigencia_borrar_Categorias.py",
+      "lines_of_code": 119,
+      "imports": [
+        {
+          "module": "requests",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "init",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_all_categories",
+          "args": [],
+          "line": 18,
+          "docstring": "Obtiene todas las categorías usando paginación"
+        },
+        {
+          "name": "eliminar_categorias_duplicadas",
+          "args": [],
+          "line": 55,
+          "docstring": "Elimina las categorías duplicadas con el nombre 'JUGUETERIA'"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "contingencia_borrar_subcategorias.py": {
+      "file": "contingencia_borrar_subcategorias.py",
+      "lines_of_code": 381,
+      "imports": [
+        {
+          "module": "requests",
+          "alias": null
+        },
+        {
+          "module": "json",
+          "alias": null
+        },
+        {
+          "module": "time",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "configurar_credenciales",
+          "args": [],
+          "line": 17,
+          "docstring": "Solicita y configura las credenciales de la API de Tiendanube."
+        },
+        {
+          "name": "obtener_todas_las_categorias",
+          "args": [],
+          "line": 59,
+          "docstring": "Obtiene todas las categorías de la tienda, manejando la paginación."
+        },
+        {
+          "name": "construir_mapas_categorias",
+          "args": [
+            "lista_categorias"
+          ],
+          "line": 104,
+          "docstring": "Construye mapas para búsqueda rápida de categorías por ID y por ID de padre."
+        },
+        {
+          "name": "imprimir_y_contar_categorias",
+          "args": [
+            "lista_todas_las_categorias"
+          ],
+          "line": 124,
+          "docstring": "Imprime y cuenta las categorías padre y sus subcategorías."
+        },
+        {
+          "name": "eliminar_categoria_api",
+          "args": [
+            "id_categoria"
+          ],
+          "line": 161,
+          "docstring": "Elimina una única categoría por su ID mediante una llamada a la API."
+        },
+        {
+          "name": "eliminar_rama_recursivamente",
+          "args": [
+            "id_categoria_a_eliminar",
+            "mapa_por_id",
+            "mapa_por_id_padre"
+          ],
+          "line": 180,
+          "docstring": "Elimina recursivamente todas las subcategorías de una categoría dada, y luego la categoría misma."
+        },
+        {
+          "name": "eliminar_nietos_de_categoria_referencia",
+          "args": [
+            "nombre_categoria_ref",
+            "lista_todas_las_categorias"
+          ],
+          "line": 197,
+          "docstring": "Para una categoría de referencia dada (por nombre), elimina todos los \"nietos\""
+        },
+        {
+          "name": "eliminar_categoria_por_nombre_y_sus_hijas",
+          "args": [
+            "nombre_categoria_a_eliminar",
+            "lista_todas_las_categorias"
+          ],
+          "line": 258,
+          "docstring": "Elimina una categoría por su nombre y todas sus subcategorías."
+        },
+        {
+          "name": "main",
+          "args": [],
+          "line": 292,
+          "docstring": "Función principal que ejecuta el menú interactivo."
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "curl-api.py": {
+      "file": "curl-api.py",
+      "lines_of_code": 27,
+      "imports": [
+        {
+          "module": "requests",
+          "alias": null
+        }
+      ],
+      "functions": [],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "main.py": {
+      "file": "main.py",
+      "lines_of_code": 308,
+      "imports": [
+        {
+          "module": "argparse",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        },
+        {
+          "from": "app.core.logger",
+          "name": "inicializar_sistema_logs",
+          "alias": null
+        },
+        {
+          "from": "app.core.logger",
+          "name": "registrar_error",
+          "alias": null
+        },
+        {
+          "from": "app.core.logger",
+          "name": "registrar_info",
+          "alias": null
+        },
+        {
+          "module": "warnings",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "shutil",
+          "alias": null
+        },
+        {
+          "module": "subprocess",
+          "alias": null
+        },
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "init",
+          "alias": null
+        },
+        {
+          "from": "scraping_coronel",
+          "name": "run_scrape",
+          "alias": null
+        },
+        {
+          "from": "subida_tienda",
+          "name": "run_sync",
+          "alias": null
+        },
+        {
+          "from": "actualizar_stock",
+          "name": "run_stock",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "preguntar_download",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "preguntar_porcentaje",
+          "alias": null
+        },
+        {
+          "module": "pkg_resources",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "verificar_actualizaciones",
+          "args": [],
+          "line": 30,
+          "docstring": "Compara de manera silenciosa la versión local con la remota en GitHub"
+        },
+        {
+          "name": "verificar_dependencias",
+          "args": [],
+          "line": 75,
+          "docstring": "Verifica que todas las librerías listadas en requirements.txt estén instaladas"
+        },
+        {
+          "name": "ejecutar_menu_interactivo",
+          "args": [],
+          "line": 121,
+          "docstring": ""
+        },
+        {
+          "name": "main",
+          "args": [],
+          "line": 188,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "n_categorias.py": {
+      "file": "n_categorias.py",
+      "lines_of_code": 212,
+      "imports": [
+        {
+          "module": "requests",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "init",
+          "alias": null
+        },
+        {
+          "from": "collections",
+          "name": "defaultdict",
+          "alias": null
+        },
+        {
+          "module": "unicodedata",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_all_categories",
+          "args": [],
+          "line": 18,
+          "docstring": "Obtiene todas las categorías usando paginación"
+        },
+        {
+          "name": "analizar_categorias",
+          "args": [],
+          "line": 55,
+          "docstring": "Analiza y muestra estadísticas de las categorías"
+        },
+        {
+          "name": "get_all_products",
+          "args": [],
+          "line": 113,
+          "docstring": "Descarga todos los productos de Tienda Nube con paginación"
+        },
+        {
+          "name": "normalizar_nombre",
+          "args": [
+            "nombre"
+          ],
+          "line": 142,
+          "docstring": "Normaliza nombre para comparación (mayúsculas, sin tildes)"
+        },
+        {
+          "name": "mover_productos_libreria",
+          "args": [],
+          "line": 152,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "scraping_coronel.py": {
+      "file": "scraping_coronel.py",
+      "lines_of_code": 87,
+      "imports": [
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        },
+        {
+          "module": "subprocess",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "inputimeout",
+          "name": "inputimeout",
+          "alias": null
+        },
+        {
+          "from": "inputimeout",
+          "name": "TimeoutOccurred",
+          "alias": null
+        },
+        {
+          "from": "app.login",
+          "name": "login",
+          "alias": null
+        },
+        {
+          "from": "app.scraping_all_product",
+          "name": "scraping_all_product",
+          "alias": null
+        },
+        {
+          "from": "app.scraping_product",
+          "name": "consolidar_todo_en_base_de_datos",
+          "alias": null
+        },
+        {
+          "from": "app.scraping_product",
+          "name": "set_download_images",
+          "alias": null
+        },
+        {
+          "from": "app.core.browser",
+          "name": "get_chrome_driver",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "preguntar_download",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "preguntar_porcentaje",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "run_scrape",
+          "args": [
+            "ganancia",
+            "download_images"
+          ],
+          "line": 15,
+          "docstring": "Función ejecutable para realizar el scraping del catálogo de Coronel Mayorista."
+        }
+      ],
+      "classes": [],
+      "sql_tables": [
+        "para"
+      ],
+      "external_apis": []
+    },
+    "subida_tienda.py": {
+      "file": "subida_tienda.py",
+      "lines_of_code": 139,
+      "imports": [
+        {
+          "from": "api_tiendanube",
+          "name": "crear_producto",
+          "alias": null
+        },
+        {
+          "from": "api_tiendanube",
+          "name": "buscar_producto_por_sku",
+          "alias": null
+        },
+        {
+          "from": "api_tiendanube",
+          "name": "actualizar_producto",
+          "alias": null
+        },
+        {
+          "from": "api_tiendanube",
+          "name": "limpiar_cache_productos",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "app.core.db",
+          "name": "obtener_productos_de_db",
+          "alias": "core_obtener_productos_de_db"
+        },
+        {
+          "from": "app.core.logger",
+          "name": "registrar_error",
+          "alias": null
+        },
+        {
+          "module": "concurrent.futures",
+          "alias": null
+        },
+        {
+          "module": "threading",
+          "alias": null
+        },
+        {
+          "module": "json",
+          "alias": null
+        },
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "run_sync",
+          "args": [
+            "ganancia",
+            "download_images",
+            "concurrency"
+          ],
+          "line": 12,
+          "docstring": "Función ejecutable para sincronizar productos desde SQLite local hacia Tiendanube."
+        },
+        {
+          "name": "procesar_un_producto",
+          "args": [
+            "producto"
+          ],
+          "line": 85,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [
+        "para"
+      ],
+      "external_apis": [
+        "Tiendanube REST API"
+      ]
+    },
+    "test_env.py": {
+      "file": "test_env.py",
+      "lines_of_code": 100,
+      "imports": [
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "from": "pathlib",
+          "name": "Path",
+          "alias": null
+        },
+        {
+          "from": "dotenv",
+          "name": "load_dotenv",
+          "alias": null
+        },
+        {
+          "from": "openai",
+          "name": "OpenAI",
+          "alias": null
+        }
+      ],
+      "functions": [],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "OpenAI API"
+      ]
+    },
+    "app/guardar_excel.py": {
+      "file": "app/guardar_excel.py",
+      "lines_of_code": 45,
+      "imports": [
+        {
+          "module": "openpyxl",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "save_to_excel",
+          "args": [
+            "products",
+            "filename"
+          ],
+          "line": 5,
+          "docstring": "Guarda la lista de productos en un archivo Excel (.xlsx)"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "app/limpiar_productos_coronel.py": {
+      "file": "app/limpiar_productos_coronel.py",
+      "lines_of_code": 50,
+      "imports": [
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "sqlite3",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "scraping_product",
+          "name": "inicializar_bd",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "limpiar_codigos_sqlite",
+          "args": [],
+          "line": 6,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [
+        "productos",
+        "productos_limpios"
+      ],
+      "external_apis": []
+    },
+    "app/login.py": {
+      "file": "app/login.py",
+      "lines_of_code": 202,
+      "imports": [
+        {
+          "from": "selenium.webdriver.support.ui",
+          "name": "WebDriverWait",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.support",
+          "name": "expected_conditions",
+          "alias": "EC"
+        },
+        {
+          "from": "selenium.webdriver.common.by",
+          "name": "By",
+          "alias": null
+        },
+        {
+          "from": "selenium.common.exceptions",
+          "name": "TimeoutException",
+          "alias": null
+        },
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "tkinter",
+          "name": "Tk",
+          "alias": null
+        },
+        {
+          "from": "tkinter",
+          "name": "Button",
+          "alias": null
+        },
+        {
+          "from": "tkinter",
+          "name": "Label",
+          "alias": null
+        },
+        {
+          "module": "threading",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "shutil",
+          "alias": null
+        },
+        {
+          "from": "datetime",
+          "name": "datetime",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "CORONEL_CUIT",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "CORONEL_PASSWORD",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        },
+        {
+          "from": "pathlib",
+          "name": "Path",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "CORONEL_CUIT",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "CORONEL_PASSWORD",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "create_floating_button",
+          "args": [],
+          "line": 24,
+          "docstring": ""
+        },
+        {
+          "name": "on_click",
+          "args": [],
+          "line": 31,
+          "docstring": ""
+        },
+        {
+          "name": "descargar_lista_precios",
+          "args": [
+            "driver",
+            "download_dir"
+          ],
+          "line": 47,
+          "docstring": "Navega a la página de lista de precios y descarga el Excel"
+        },
+        {
+          "name": "login",
+          "args": [
+            "driver",
+            "show_button"
+          ],
+          "line": 118,
+          "docstring": "Versión optimizada del login para Coronel Mayotista que:"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "Selenium (Coronel Mayorista)"
+      ]
+    },
+    "app/scraping_all_product.py": {
+      "file": "app/scraping_all_product.py",
+      "lines_of_code": 144,
+      "imports": [
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "scraping_product",
+          "name": "scraping_product",
+          "alias": null
+        },
+        {
+          "from": "app.core.logger",
+          "name": "registrar_error",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.common.by",
+          "name": "By",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.support.ui",
+          "name": "WebDriverWait",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.support",
+          "name": "expected_conditions",
+          "alias": "EC"
+        },
+        {
+          "module": "time",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "boton_esta_deshabilitado",
+          "args": [
+            "btn"
+          ],
+          "line": 9,
+          "docstring": "Verifica con precisión si el botón 'siguiente' está verdaderamente deshabilitado"
+        },
+        {
+          "name": "scraping_all_product",
+          "args": [
+            "driver"
+          ],
+          "line": 37,
+          "docstring": "Extrae información de productos de TODAS las páginas disponibles con verificación robusta"
+        },
+        {
+          "name": "next_page_loaded",
+          "args": [
+            "d"
+          ],
+          "line": 112,
+          "docstring": ""
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "Selenium (Coronel Mayorista)"
+      ]
+    },
+    "app/scraping_product.py": {
+      "file": "app/scraping_product.py",
+      "lines_of_code": 243,
+      "imports": [
+        {
+          "from": "app.services.ai_estimator",
+          "name": "obtener_dimensiones_producto",
+          "alias": null
+        },
+        {
+          "from": "app.core.logger",
+          "name": "registrar_error",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.common.by",
+          "name": "By",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.support.ui",
+          "name": "WebDriverWait",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.support",
+          "name": "expected_conditions",
+          "alias": "EC"
+        },
+        {
+          "from": "selenium.common.exceptions",
+          "name": "StaleElementReferenceException",
+          "alias": null
+        },
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "module": "re",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "requests",
+          "alias": null
+        },
+        {
+          "from": "urllib.parse",
+          "name": "urlparse",
+          "alias": null
+        },
+        {
+          "module": "openpyxl",
+          "alias": null
+        },
+        {
+          "module": "sqlite3",
+          "alias": null
+        },
+        {
+          "from": "contextlib",
+          "name": "closing",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "DOWNLOAD_IMAGES",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "set_download_images",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "module": "urllib3",
+          "alias": null
+        },
+        {
+          "from": "app.core.db",
+          "name": "inicializar_bd",
+          "alias": "core_inicializar_bd"
+        },
+        {
+          "from": "app.core.db",
+          "name": "obtener_codigo_barra",
+          "alias": "core_obtener_codigo_barra"
+        },
+        {
+          "from": "app.core.db",
+          "name": "consolidar_productos",
+          "alias": "core_consolidar_productos"
+        }
+      ],
+      "functions": [
+        {
+          "name": "formatear_codigo",
+          "args": [
+            "codigo"
+          ],
+          "line": 25,
+          "docstring": ""
+        },
+        {
+          "name": "obtener_codigo_barra",
+          "args": [
+            "code",
+            "db_path"
+          ],
+          "line": 46,
+          "docstring": "Consulta rápida a SQLite delegada al módulo core"
+        },
+        {
+          "name": "inicializar_bd",
+          "args": [
+            "excel_path"
+          ],
+          "line": 50,
+          "docstring": "Inicialización delegada al módulo core"
+        },
+        {
+          "name": "consolidar_todo_en_base_de_datos",
+          "args": [
+            "todos_los_productos"
+          ],
+          "line": 54,
+          "docstring": "Consolidación delegada al módulo core"
+        },
+        {
+          "name": "scraping_product",
+          "args": [
+            "driver",
+            "max_retries",
+            "wait_time"
+          ],
+          "line": 65,
+          "docstring": "Extrae información de productos directamente desde el listado sin navegar al detalle,"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "Selenium (Coronel Mayorista)"
+      ]
+    },
+    "app/core/browser.py": {
+      "file": "app/core/browser.py",
+      "lines_of_code": 33,
+      "imports": [
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "from": "selenium",
+          "name": "webdriver",
+          "alias": null
+        },
+        {
+          "from": "selenium.webdriver.chrome.options",
+          "name": "Options",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_chrome_driver",
+          "args": [
+            "download_dir"
+          ],
+          "line": 5,
+          "docstring": "Inicializa y configura una instancia de Selenium WebDriver para Chrome"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "Selenium (Coronel Mayorista)"
+      ]
+    },
+    "app/core/db.py": {
+      "file": "app/core/db.py",
+      "lines_of_code": 213,
+      "imports": [
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "sqlite3",
+          "alias": null
+        },
+        {
+          "module": "openpyxl",
+          "alias": null
+        },
+        {
+          "from": "contextlib",
+          "name": "closing",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "List",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Dict",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Optional",
+          "alias": null
+        },
+        {
+          "from": "app.core.models",
+          "name": "Producto",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_default_db_path",
+          "args": [],
+          "line": 8,
+          "docstring": ""
+        },
+        {
+          "name": "inicializar_bd",
+          "args": [
+            "excel_path",
+            "db_path"
+          ],
+          "line": 12,
+          "docstring": "Convierte el Excel más reciente a SQLite para consultas rápidas"
+        },
+        {
+          "name": "obtener_codigo_barra",
+          "args": [
+            "code",
+            "db_path"
+          ],
+          "line": 74,
+          "docstring": "Consulta rápida a SQLite para obtener el código de barras"
+        },
+        {
+          "name": "consolidar_productos",
+          "args": [
+            "todos_los_productos",
+            "db_path"
+          ],
+          "line": 91,
+          "docstring": "Guarda todos los datos de productos en la base de datos SQLite"
+        },
+        {
+          "name": "obtener_productos_de_db",
+          "args": [
+            "db_path"
+          ],
+          "line": 139,
+          "docstring": "Obtiene todos los productos de la base de datos en formato lista de diccionarios"
+        },
+        {
+          "name": "obtener_productos_objetos",
+          "args": [
+            "db_path"
+          ],
+          "line": 172,
+          "docstring": "Obtiene todos los productos de SQLite como objetos Pydantic Producto fuertemente tipados."
+        },
+        {
+          "name": "actualizar_dimensiones_en_bd",
+          "args": [
+            "productos",
+            "dimensiones",
+            "db_path"
+          ],
+          "line": 187,
+          "docstring": "Actualiza la base de datos SQLite con las dimensiones de envío"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [
+        "productos"
+      ],
+      "external_apis": []
+    },
+    "app/core/logger.py": {
+      "file": "app/core/logger.py",
+      "lines_of_code": 155,
+      "imports": [
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        },
+        {
+          "module": "logging",
+          "alias": null
+        },
+        {
+          "from": "logging.handlers",
+          "name": "RotatingFileHandler",
+          "alias": null
+        },
+        {
+          "from": "datetime",
+          "name": "datetime",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Optional",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "args": [
+            "self",
+            "original_stderr"
+          ],
+          "line": 72,
+          "docstring": ""
+        },
+        {
+          "name": "write",
+          "args": [
+            "self",
+            "text"
+          ],
+          "line": 76,
+          "docstring": ""
+        },
+        {
+          "name": "flush",
+          "args": [
+            "self"
+          ],
+          "line": 92,
+          "docstring": ""
+        },
+        {
+          "name": "reconfigure",
+          "args": [
+            "self"
+          ],
+          "line": 99,
+          "docstring": ""
+        },
+        {
+          "name": "_manejador_excepciones_no_controladas",
+          "args": [
+            "exc_type",
+            "exc_value",
+            "exc_traceback"
+          ],
+          "line": 107,
+          "docstring": "Hook global para registrar cualquier excepción no atrapada que intente"
+        },
+        {
+          "name": "inicializar_sistema_logs",
+          "args": [],
+          "line": 130,
+          "docstring": "Activa la captura de errores en consola y el hook de excepciones globales."
+        },
+        {
+          "name": "registrar_error",
+          "args": [
+            "mensaje",
+            "excepcion"
+          ],
+          "line": 142,
+          "docstring": "Función utilitaria para registrar un error explícito en logs/errores.log"
+        },
+        {
+          "name": "registrar_info",
+          "args": [
+            "mensaje"
+          ],
+          "line": 153,
+          "docstring": "Registra información operativa en logs/actividad.log"
+        }
+      ],
+      "classes": [
+        {
+          "name": "StderrTee",
+          "line": 66,
+          "methods": [
+            "__init__",
+            "write",
+            "flush",
+            "reconfigure"
+          ],
+          "docstring": "Captura todo lo que se escriba en sys.stderr (tracebacks crudos de Python,"
+        }
+      ],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "app/core/models.py": {
+      "file": "app/core/models.py",
+      "lines_of_code": 87,
+      "imports": [
+        {
+          "from": "typing",
+          "name": "Optional",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Dict",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Any",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "List",
+          "alias": null
+        },
+        {
+          "from": "pydantic",
+          "name": "BaseModel",
+          "alias": null
+        },
+        {
+          "from": "pydantic",
+          "name": "Field",
+          "alias": null
+        },
+        {
+          "from": "pydantic",
+          "name": "field_validator",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "default_fallback",
+          "args": [
+            "cls"
+          ],
+          "line": 18,
+          "docstring": ""
+        },
+        {
+          "name": "normalizar_codigo",
+          "args": [
+            "cls",
+            "v"
+          ],
+          "line": 42,
+          "docstring": ""
+        },
+        {
+          "name": "get_precio_float",
+          "args": [
+            "self"
+          ],
+          "line": 47,
+          "docstring": "Parsea el precio string con formato monetario latinoamericano a float puro."
+        },
+        {
+          "name": "calcular_precio_venta",
+          "args": [
+            "self",
+            "margen_ganancia"
+          ],
+          "line": 61,
+          "docstring": "Calcula el precio final de venta al público aplicando el porcentaje de margen."
+        },
+        {
+          "name": "to_dict",
+          "args": [
+            "self"
+          ],
+          "line": 66,
+          "docstring": "Exporta a diccionario compatible con el esquema heredado del proyecto."
+        },
+        {
+          "name": "from_row",
+          "args": [
+            "cls",
+            "row"
+          ],
+          "line": 71,
+          "docstring": "Instancia un producto a partir de una tupla de la tabla SQLite productos."
+        }
+      ],
+      "classes": [
+        {
+          "name": "Dimensiones",
+          "line": 10,
+          "methods": [
+            "default_fallback"
+          ],
+          "docstring": "Dimensiones y peso estimados para logística y envíos en Tiendanube."
+        },
+        {
+          "name": "Producto",
+          "line": 22,
+          "methods": [
+            "normalizar_codigo",
+            "get_precio_float",
+            "calcular_precio_venta",
+            "to_dict",
+            "from_row"
+          ],
+          "docstring": "Modelo canónico de producto sincronizado."
+        }
+      ],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "app/services/ai_estimator.py": {
+      "file": "app/services/ai_estimator.py",
+      "lines_of_code": 344,
+      "imports": [
+        {
+          "from": "openai",
+          "name": "OpenAI",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "math",
+          "alias": null
+        },
+        {
+          "module": "json",
+          "alias": null
+        },
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "List",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Dict",
+          "alias": null
+        },
+        {
+          "from": "datetime",
+          "name": "datetime",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "config",
+          "name": "OPENAI_API_KEY",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        },
+        {
+          "from": "app.core.db",
+          "name": "actualizar_dimensiones_en_bd",
+          "alias": "core_actualizar_dimensiones_en_bd"
+        }
+      ],
+      "functions": [
+        {
+          "name": "guardar_saldo_openai",
+          "args": [
+            "saldo"
+          ],
+          "line": 19,
+          "docstring": "Guarda el saldo restante de OpenAI en 'openai_saldo.json'."
+        },
+        {
+          "name": "cargar_saldo_openai",
+          "args": [],
+          "line": 33,
+          "docstring": "Carga el saldo restante de OpenAI."
+        },
+        {
+          "name": "obtener_dimensiones_lote",
+          "args": [
+            "productos",
+            "categoria"
+          ],
+          "line": 106,
+          "docstring": "Obtiene dimensiones y peso para un lote de productos usando OpenAI GPT-4o-mini."
+        },
+        {
+          "name": "actualizar_dimensiones_en_bd",
+          "args": [
+            "productos",
+            "dimensiones",
+            "db_path"
+          ],
+          "line": 261,
+          "docstring": "Actualiza la base de datos con las dimensiones obtenidas (delegado a core.db)"
+        },
+        {
+          "name": "obtener_dimensiones_producto",
+          "args": [
+            "todos_los_productos",
+            "categoria",
+            "db_path",
+            "batch_size"
+          ],
+          "line": 272,
+          "docstring": "Procesa todos los productos en lotes para obtener sus dimensiones"
+        }
+      ],
+      "classes": [],
+      "sql_tables": [],
+      "external_apis": [
+        "OpenAI API"
+      ]
+    },
+    "app/services/tiendanube.py": {
+      "file": "app/services/tiendanube.py",
+      "lines_of_code": 443,
+      "imports": [
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "time",
+          "alias": null
+        },
+        {
+          "module": "json",
+          "alias": null
+        },
+        {
+          "module": "base64",
+          "alias": null
+        },
+        {
+          "module": "threading",
+          "alias": null
+        },
+        {
+          "module": "requests",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "List",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Dict",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Optional",
+          "alias": null
+        },
+        {
+          "from": "functools",
+          "name": "wraps",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Fore",
+          "alias": null
+        },
+        {
+          "from": "colorama",
+          "name": "Style",
+          "alias": null
+        },
+        {
+          "from": "tqdm",
+          "name": "tqdm",
+          "alias": null
+        },
+        {
+          "from": "app.services.ai_estimator",
+          "name": "obtener_dimensiones_producto",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "args": [
+            "self",
+            "store_id",
+            "access_token",
+            "user_agent"
+          ],
+          "line": 13,
+          "docstring": ""
+        },
+        {
+          "name": "_rebuild_sku_index",
+          "args": [
+            "self"
+          ],
+          "line": 42,
+          "docstring": "Reconstruye el índice en memoria SKU -> Product ID para búsquedas O(1) inmediatas."
+        },
+        {
+          "name": "_request_with_retry",
+          "args": [
+            "self",
+            "method",
+            "url"
+          ],
+          "line": 54,
+          "docstring": "Wrapper con reintentos exponenciales para proteger contra 429 (Rate Limit)."
+        },
+        {
+          "name": "_load_cache",
+          "args": [
+            "self"
+          ],
+          "line": 68,
+          "docstring": ""
+        },
+        {
+          "name": "save_cache",
+          "args": [
+            "self"
+          ],
+          "line": 77,
+          "docstring": ""
+        },
+        {
+          "name": "limpiar_cache_productos",
+          "args": [
+            "self"
+          ],
+          "line": 85,
+          "docstring": ""
+        },
+        {
+          "name": "buscar_id_categoria",
+          "args": [
+            "self",
+            "nombre",
+            "parent_id"
+          ],
+          "line": 96,
+          "docstring": ""
+        },
+        {
+          "name": "crear_categoria",
+          "args": [
+            "self",
+            "nombre",
+            "parent_id"
+          ],
+          "line": 109,
+          "docstring": ""
+        },
+        {
+          "name": "obtener_categorias_tienda",
+          "args": [
+            "self"
+          ],
+          "line": 133,
+          "docstring": ""
+        },
+        {
+          "name": "obtener_ids_categorias",
+          "args": [
+            "self",
+            "producto"
+          ],
+          "line": 168,
+          "docstring": ""
+        },
+        {
+          "name": "handle_imagenes_producto",
+          "args": [
+            "self",
+            "producto",
+            "download_images_flag"
+          ],
+          "line": 200,
+          "docstring": ""
+        },
+        {
+          "name": "subir_imagen_local",
+          "args": [
+            "self",
+            "ruta_relativa"
+          ],
+          "line": 219,
+          "docstring": ""
+        },
+        {
+          "name": "buscar_producto_por_sku",
+          "args": [
+            "self",
+            "sku"
+          ],
+          "line": 236,
+          "docstring": ""
+        },
+        {
+          "name": "obtener_id_variante",
+          "args": [
+            "self",
+            "producto_id"
+          ],
+          "line": 291,
+          "docstring": ""
+        },
+        {
+          "name": "agregar_imagen",
+          "args": [
+            "self",
+            "producto_id",
+            "imagen_url"
+          ],
+          "line": 304,
+          "docstring": ""
+        },
+        {
+          "name": "crear_producto",
+          "args": [
+            "self",
+            "producto",
+            "db_path",
+            "ganancia_porcentaje",
+            "download_images_flag"
+          ],
+          "line": 312,
+          "docstring": ""
+        },
+        {
+          "name": "actualizar_producto",
+          "args": [
+            "self",
+            "producto_id",
+            "producto",
+            "ganancia_porcentaje",
+            "download_images_flag"
+          ],
+          "line": 379,
+          "docstring": ""
+        },
+        {
+          "name": "update_variant_stock",
+          "args": [
+            "self",
+            "product_id",
+            "variant_id",
+            "stock"
+          ],
+          "line": 412,
+          "docstring": ""
+        },
+        {
+          "name": "update_product_visibility",
+          "args": [
+            "self",
+            "product_id",
+            "published"
+          ],
+          "line": 420,
+          "docstring": ""
+        },
+        {
+          "name": "get_all_products",
+          "args": [
+            "self"
+          ],
+          "line": 428,
+          "docstring": ""
+        }
+      ],
+      "classes": [
+        {
+          "name": "TiendanubeClient",
+          "line": 12,
+          "methods": [
+            "__init__",
+            "_rebuild_sku_index",
+            "_request_with_retry",
+            "_load_cache",
+            "save_cache",
+            "limpiar_cache_productos",
+            "buscar_id_categoria",
+            "crear_categoria",
+            "obtener_categorias_tienda",
+            "obtener_ids_categorias",
+            "handle_imagenes_producto",
+            "subir_imagen_local",
+            "buscar_producto_por_sku",
+            "obtener_id_variante",
+            "agregar_imagen",
+            "crear_producto",
+            "actualizar_producto",
+            "update_variant_stock",
+            "update_product_visibility",
+            "get_all_products"
+          ],
+          "docstring": ""
+        }
+      ],
+      "sql_tables": [],
+      "external_apis": []
+    },
+    "tools/generate_code_graph.py": {
+      "file": "tools/generate_code_graph.py",
+      "lines_of_code": 313,
+      "imports": [
+        {
+          "module": "ast",
+          "alias": null
+        },
+        {
+          "module": "json",
+          "alias": null
+        },
+        {
+          "module": "os",
+          "alias": null
+        },
+        {
+          "module": "re",
+          "alias": null
+        },
+        {
+          "module": "sys",
+          "alias": null
+        },
+        {
+          "from": "pathlib",
+          "name": "Path",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Dict",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "List",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Any",
+          "alias": null
+        },
+        {
+          "from": "typing",
+          "name": "Set",
+          "alias": null
+        }
+      ],
+      "functions": [
+        {
+          "name": "__init__",
+          "args": [
+            "self",
+            "filepath",
+            "root_path"
+          ],
+          "line": 44,
+          "docstring": ""
+        },
+        {
+          "name": "visit_Import",
+          "args": [
+            "self",
+            "node"
+          ],
+          "line": 54,
+          "docstring": ""
+        },
+        {
+          "name": "visit_ImportFrom",
+          "args": [
+            "self",
+            "node"
+          ],
+          "line": 60,
+          "docstring": ""
+        },
+        {
+          "name": "_check_external_api",
+          "args": [
+            "self",
+            "module_name"
+          ],
+          "line": 67,
+          "docstring": ""
+        },
+        {
+          "name": "visit_FunctionDef",
+          "args": [
+            "self",
+            "node"
+          ],
+          "line": 75,
+          "docstring": ""
+        },
+        {
+          "name": "visit_AsyncFunctionDef",
+          "args": [
+            "self",
+            "node"
+          ],
+          "line": 87,
+          "docstring": ""
+        },
+        {
+          "name": "visit_ClassDef",
+          "args": [
+            "self",
+            "node"
+          ],
+          "line": 100,
+          "docstring": ""
+        },
+        {
+          "name": "visit_Call",
+          "args": [
+            "self",
+            "node"
+          ],
+          "line": 115,
+          "docstring": ""
+        },
+        {
+          "name": "visit_Constant",
+          "args": [
+            "self",
+            "node"
+          ],
+          "line": 122,
+          "docstring": ""
+        },
+        {
+          "name": "scan_codebase",
+          "args": [
+            "root_path"
+          ],
+          "line": 134,
+          "docstring": ""
+        },
+        {
+          "name": "generate_markdown_report",
+          "args": [
+            "graph_data",
+            "output_md"
+          ],
+          "line": 209,
+          "docstring": ""
+        },
+        {
+          "name": "main",
+          "args": [],
+          "line": 298,
+          "docstring": ""
+        }
+      ],
+      "classes": [
+        {
+          "name": "CodeAnalyzer",
+          "line": 43,
+          "methods": [
+            "__init__",
+            "visit_Import",
+            "visit_ImportFrom",
+            "_check_external_api",
+            "visit_FunctionDef",
+            "visit_AsyncFunctionDef",
+            "visit_ClassDef",
+            "visit_Call",
+            "visit_Constant"
+          ],
+          "docstring": ""
+        }
+      ],
+      "sql_tables": [],
+      "external_apis": []
+    }
+  },
+  "edges": [
+    {
+      "source": "actualizar_stock.py",
+      "target": "app/login.py",
+      "relation": "imports",
+      "imported_name": "login"
+    },
+    {
+      "source": "actualizar_stock.py",
+      "target": "api_tiendanube.py",
+      "relation": "imports",
+      "imported_name": "client"
+    },
+    {
+      "source": "actualizar_stock.py",
+      "target": "app/core/browser.py",
+      "relation": "imports",
+      "imported_name": "get_chrome_driver"
+    },
+    {
+      "source": "actualizar_stock.py",
+      "target": "app/core/logger.py",
+      "relation": "imports",
+      "imported_name": "registrar_error"
+    },
+    {
+      "source": "api_tiendanube.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "TIENDANUBE_STORE_ID"
+    },
+    {
+      "source": "api_tiendanube.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "TIENDANUBE_ACCESS_TOKEN"
+    },
+    {
+      "source": "api_tiendanube.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "TIENDANUBE_USER_AGENT"
+    },
+    {
+      "source": "api_tiendanube.py",
+      "target": "app/services/tiendanube.py",
+      "relation": "imports",
+      "imported_name": "TiendanubeClient"
+    },
+    {
+      "source": "connect_api.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "TIENDANUBE_STORE_ID"
+    },
+    {
+      "source": "connect_api.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "TIENDANUBE_ACCESS_TOKEN"
+    },
+    {
+      "source": "connect_api.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "TIENDANUBE_USER_AGENT"
+    },
+    {
+      "source": "main.py",
+      "target": "app/core/logger.py",
+      "relation": "imports",
+      "imported_name": "inicializar_sistema_logs"
+    },
+    {
+      "source": "main.py",
+      "target": "app/core/logger.py",
+      "relation": "imports",
+      "imported_name": "registrar_error"
+    },
+    {
+      "source": "main.py",
+      "target": "app/core/logger.py",
+      "relation": "imports",
+      "imported_name": "registrar_info"
+    },
+    {
+      "source": "main.py",
+      "target": "scraping_coronel.py",
+      "relation": "imports",
+      "imported_name": "run_scrape"
+    },
+    {
+      "source": "main.py",
+      "target": "subida_tienda.py",
+      "relation": "imports",
+      "imported_name": "run_sync"
+    },
+    {
+      "source": "main.py",
+      "target": "actualizar_stock.py",
+      "relation": "imports",
+      "imported_name": "run_stock"
+    },
+    {
+      "source": "main.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "preguntar_download"
+    },
+    {
+      "source": "main.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "preguntar_porcentaje"
+    },
+    {
+      "source": "scraping_coronel.py",
+      "target": "app/login.py",
+      "relation": "imports",
+      "imported_name": "login"
+    },
+    {
+      "source": "scraping_coronel.py",
+      "target": "app/scraping_all_product.py",
+      "relation": "imports",
+      "imported_name": "scraping_all_product"
+    },
+    {
+      "source": "scraping_coronel.py",
+      "target": "app/scraping_product.py",
+      "relation": "imports",
+      "imported_name": "consolidar_todo_en_base_de_datos"
+    },
+    {
+      "source": "scraping_coronel.py",
+      "target": "app/scraping_product.py",
+      "relation": "imports",
+      "imported_name": "set_download_images"
+    },
+    {
+      "source": "scraping_coronel.py",
+      "target": "app/core/browser.py",
+      "relation": "imports",
+      "imported_name": "get_chrome_driver"
+    },
+    {
+      "source": "scraping_coronel.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "preguntar_download"
+    },
+    {
+      "source": "scraping_coronel.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "preguntar_porcentaje"
+    },
+    {
+      "source": "subida_tienda.py",
+      "target": "api_tiendanube.py",
+      "relation": "imports",
+      "imported_name": "crear_producto"
+    },
+    {
+      "source": "subida_tienda.py",
+      "target": "api_tiendanube.py",
+      "relation": "imports",
+      "imported_name": "buscar_producto_por_sku"
+    },
+    {
+      "source": "subida_tienda.py",
+      "target": "api_tiendanube.py",
+      "relation": "imports",
+      "imported_name": "actualizar_producto"
+    },
+    {
+      "source": "subida_tienda.py",
+      "target": "api_tiendanube.py",
+      "relation": "imports",
+      "imported_name": "limpiar_cache_productos"
+    },
+    {
+      "source": "subida_tienda.py",
+      "target": "app/core/db.py",
+      "relation": "imports",
+      "imported_name": "obtener_productos_de_db"
+    },
+    {
+      "source": "subida_tienda.py",
+      "target": "app/core/logger.py",
+      "relation": "imports",
+      "imported_name": "registrar_error"
+    },
+    {
+      "source": "app/login.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "CORONEL_CUIT"
+    },
+    {
+      "source": "app/login.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "CORONEL_PASSWORD"
+    },
+    {
+      "source": "app/scraping_all_product.py",
+      "target": "app/core/logger.py",
+      "relation": "imports",
+      "imported_name": "registrar_error"
+    },
+    {
+      "source": "app/scraping_product.py",
+      "target": "app/services/ai_estimator.py",
+      "relation": "imports",
+      "imported_name": "obtener_dimensiones_producto"
+    },
+    {
+      "source": "app/scraping_product.py",
+      "target": "app/core/logger.py",
+      "relation": "imports",
+      "imported_name": "registrar_error"
+    },
+    {
+      "source": "app/scraping_product.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "DOWNLOAD_IMAGES"
+    },
+    {
+      "source": "app/scraping_product.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "set_download_images"
+    },
+    {
+      "source": "app/scraping_product.py",
+      "target": "app/core/db.py",
+      "relation": "imports",
+      "imported_name": "inicializar_bd"
+    },
+    {
+      "source": "app/scraping_product.py",
+      "target": "app/core/db.py",
+      "relation": "imports",
+      "imported_name": "obtener_codigo_barra"
+    },
+    {
+      "source": "app/scraping_product.py",
+      "target": "app/core/db.py",
+      "relation": "imports",
+      "imported_name": "consolidar_productos"
+    },
+    {
+      "source": "app/core/db.py",
+      "target": "app/core/models.py",
+      "relation": "imports",
+      "imported_name": "Producto"
+    },
+    {
+      "source": "app/services/ai_estimator.py",
+      "target": "config.py",
+      "relation": "imports",
+      "imported_name": "OPENAI_API_KEY"
+    },
+    {
+      "source": "app/services/ai_estimator.py",
+      "target": "app/core/db.py",
+      "relation": "imports",
+      "imported_name": "actualizar_dimensiones_en_bd"
+    },
+    {
+      "source": "app/services/tiendanube.py",
+      "target": "app/services/ai_estimator.py",
+      "relation": "imports",
+      "imported_name": "obtener_dimensiones_producto"
+    }
+  ]
+}

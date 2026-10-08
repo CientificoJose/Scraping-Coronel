@@ -3,11 +3,12 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 from app.login import login
 from api_tiendanube import client
 from colorama import Fore, Style, init
 from app.core.browser import get_chrome_driver
+from app.core.logger import registrar_error
 import pandas as pd
 import time
 import os
@@ -241,53 +242,60 @@ def scraping_product(driver, max_retries=MAX_RETRIES, wait_time=WAIT_TIME):
     
     print(f"{Fore.CYAN}📦 Procesando {total_products} productos{Style.RESET_ALL}")
     
-    for index, product in enumerate(product_elements, 1):
-        try:
-            # Hacer scroll hasta el elemento
-            #driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", product)
-            #time.sleep(0.1)
-            
-            # Obtener el código del producto
+    for index in range(total_products):
+        for intento in range(3):
             try:
-                code_element = product.find_element(By.CSS_SELECTOR, ".span-codigo")
-                code = code_element.text.replace("Código: ", "").strip()
-            except:
-                print(f"{Fore.RED}⚠️ No se pudo obtener el código del producto {index}{Style.RESET_ALL}")
-                continue
-            
-            code = formatear_codigo(code)
-            
-            # Procesar variante (ORO)
-            variant = ""
-            try:
-                adicional_element = product.find_element(By.CSS_SELECTOR, ".adicional span")
-                adicional_text = adicional_element.text.strip()
-                if adicional_text:
-                    # Sanitizar la variante eliminando espacios y caracteres problemáticos
-                    variant = adicional_text.upper()
-                    variant = variant.replace(' ', '').replace('/', '-').replace('\\', '-')
-                    code += f"-{variant}"
-            except:
-                pass
-            
-            # Agregar producto a la lista
-            product_data = {
-                'codigo': code,
-                'categoria': categoria,
-                'stock': 999999  # Stock "infinito"
-            }
-            products.append(product_data)
-            
-            # Mostrar progreso
-            print(f"\n{Fore.GREEN}⚡ Producto {index}/{total_products}{Style.RESET_ALL}")
-            print(f"{Fore.CYAN}🔍 Código: {Style.RESET_ALL}{code}")
-            if variant:
-                print(f"{Fore.CYAN}🎨 Variante: {Style.RESET_ALL}{variant}")
-            print("-" * 50)
-            
-        except Exception as e:
-            print(f"Error al extraer producto: {e}")
-            continue
+                cards = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
+                if index >= len(cards):
+                    break
+                product = cards[index]
+                
+                # Obtener el código del producto
+                try:
+                    code_element = product.find_element(By.CSS_SELECTOR, ".span-codigo")
+                    code = code_element.text.replace("Código: ", "").strip()
+                except:
+                    print(f"{Fore.RED}⚠️ No se pudo obtener el código del producto {index + 1}{Style.RESET_ALL}")
+                    break
+                
+                code = formatear_codigo(code)
+                
+                # Procesar variante (ORO)
+                variant = ""
+                try:
+                    adicional_element = product.find_element(By.CSS_SELECTOR, ".adicional span")
+                    adicional_text = adicional_element.text.strip()
+                    if adicional_text:
+                        # Sanitizar la variante eliminando espacios y caracteres problemáticos
+                        variant = adicional_text.upper()
+                        variant = variant.replace(' ', '').replace('/', '-').replace('\\', '-')
+                        code += f"-{variant}"
+                except:
+                    pass
+                
+                # Agregar producto a la lista
+                product_data = {
+                    'codigo': code,
+                    'categoria': categoria,
+                    'stock': 999999  # Stock "infinito"
+                }
+                products.append(product_data)
+                
+                # Mostrar progreso
+                print(f"\n{Fore.GREEN}⚡ Producto {index + 1}/{total_products}{Style.RESET_ALL}")
+                print(f"{Fore.CYAN}🔍 Código: {Style.RESET_ALL}{code}")
+                if variant:
+                    print(f"{Fore.CYAN}🎨 Variante: {Style.RESET_ALL}{variant}")
+                print("-" * 50)
+                break
+                
+            except StaleElementReferenceException:
+                time.sleep(0.3)
+                if intento == 2:
+                    print(f"{Fore.RED}⚠️ No se pudo extraer producto en índice {index} por StaleElementReference tras 3 intentos.{Style.RESET_ALL}")
+            except Exception as e:
+                print(f"Error al extraer producto: {e}")
+                break
 
     
     # Return both products and category
@@ -377,6 +385,7 @@ def update_tiendanube_stock(scraped_products):
 
     except Exception as e:
         print(Fore.RED + f"Error general en la actualización: {e}" + Style.RESET_ALL)
+        registrar_error("Error general en la actualización de stock", e)
 
 def scraping_all_product(driver):
     """

@@ -1,7 +1,9 @@
 from app.services.ai_estimator import obtener_dimensiones_producto
+from app.core.logger import registrar_error
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import StaleElementReferenceException
 import time
 import re
 import os
@@ -94,104 +96,144 @@ def scraping_product(driver, max_retries=3, wait_time=10):
         
     products = []
     
-    # Obtener todas las tarjetas de producto en el listado
+    # 1. Scroll progresivo por la página para forzar a Angular a renderizar todas las tarjetas (32 o más) y sus fotos
+    try:
+        altura_doc = driver.execute_script("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
+        paso = 700
+        for y_pos in range(0, altura_doc, paso):
+            driver.execute_script(f"window.scrollTo(0, {y_pos});")
+            time.sleep(0.12)
+        time.sleep(0.5)
+        # Regresar al inicio para procesar ordenadamente
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(0.3)
+    except Exception as scroll_err:
+        pass
+
+    # 2. Obtener todas las tarjetas renderizadas
     product_elements = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
     total_products = len(product_elements)
     
     print(f"{Fore.CYAN}📦 Encontrados {total_products} productos en el listado. Procesando...{Style.RESET_ALL}")
     
-    for index, product in enumerate(product_elements):
-        try:
-            # Hacer scroll hasta el elemento para asegurar carga de imágenes perezosas (lazy load)
-            driver.execute_script("arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});", product)
-            
-            # 1. Extraer código (SKU)
+    for index in range(total_products):
+        for intento in range(3):
             try:
-                code = product.find_element(By.CSS_SELECTOR, ".span-codigo").text.replace("Código: ", "").strip()
-            except Exception:
+                # Re-obtener la lista fresca de tarjetas del DOM
+                cards = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
+                if index >= len(cards):
+                    # Si el índice supera las tarjetas visibles, hacer scroll para forzar más tarjetas
+                    driver.execute_script("window.scrollBy(0, 800);")
+                    time.sleep(0.4)
+                    cards = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
+                    if index >= len(cards):
+                        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                        time.sleep(0.6)
+                        cards = driver.find_elements(By.CSS_SELECTOR, ".col-art .card-product")
+                        if index >= len(cards):
+                            break
+
+                product = cards[index]
+
+                # 1. Extraer código (SKU)
                 try:
-                    code = product.find_element(By.CSS_SELECTOR, ".codigo").text.replace("Código: ", "").strip()
+                    code = product.find_element(By.CSS_SELECTOR, ".span-codigo").text.replace("Código: ", "").strip()
                 except Exception:
-                    print(f"{Fore.RED}⚠️ No se pudo obtener el código del producto {index + 1}{Style.RESET_ALL}")
-                    continue
+                    try:
+                        code = product.find_element(By.CSS_SELECTOR, ".codigo").text.replace("Código: ", "").strip()
+                    except Exception:
+                        print(f"{Fore.RED}⚠️ No se pudo obtener el código del producto {index + 1}{Style.RESET_ALL}")
+                        break
 
-            code = formatear_codigo(code)
+                code = formatear_codigo(code)
 
-            # 2. Extraer descripción
-            try:
-                description = product.find_element(By.CSS_SELECTOR, ".descripcion").text.strip()
-            except Exception:
-                description = ""
-
-            # 3. Extraer precio (tachado/oferta primero, si no existe el normal)
-            try:
-                price = product.find_element(By.CSS_SELECTOR, "span.tachado").text.strip()
-            except Exception:
+                # 2. Extraer descripción
                 try:
-                    price = product.find_element(By.CSS_SELECTOR, "span.sintachar").text.strip()
+                    description = product.find_element(By.CSS_SELECTOR, ".descripcion").text.strip()
                 except Exception:
-                    price = "0"
+                    description = ""
 
-            # 4. Extraer variante si existe
-            variant = ""
-            try:
-                adicional_element = product.find_element(By.CSS_SELECTOR, ".adicional span")
-                adicional_text = adicional_element.text.strip()
-                if adicional_text:
-                    variant = adicional_text.upper()
-                    variant = variant.replace(' ', '').replace('/', '-').replace('\\', '-')
-                    # Solo añadir si no está ya en el código
-                    if not code.endswith(f"-{variant}"):
-                        code = f"{code}-{variant}"
-            except Exception:
-                pass
-
-            # 5. Extraer URL de la imagen
-            try:
-                image_element = product.find_element(By.CSS_SELECTOR, ".card-img-top")
-                image_url = image_element.get_attribute("src")
-            except Exception:
-                image_url = ""
-
-            # 6. Descargar imagen localmente si está activado
-            img_name = f"{code}.jpg"
-            img_path = os.path.join(img_dir, img_name)
-            
-            if DOWNLOAD_IMAGES and image_url:
+                # 3. Extraer precio (tachado/oferta primero, si no existe el normal)
                 try:
-                    # Evitar errores si la imagen es una URL base64/data
-                    if not image_url.startswith("data:"):
-                        response = requests.get(image_url, stream=True, verify=False, timeout=10)
-                        if response.status_code == 200:
-                            with open(img_path, 'wb') as f:
-                                for chunk in response.iter_content(1024):
-                                    f.write(chunk)
-                except Exception as img_err:
-                    print(f"Advertencia al descargar imagen para {code}: {img_err}")
+                    price = product.find_element(By.CSS_SELECTOR, "span.tachado").text.strip()
+                except Exception:
+                    try:
+                        price = product.find_element(By.CSS_SELECTOR, "span.sintachar").text.strip()
+                    except Exception:
+                        price = "0"
 
-            # 7. Obtener código de barras del Excel/SQLite si existe
-            codigo_barra = obtener_codigo_barra(code, scraping_product.db_path) if scraping_product.db_path else ""
+                # 4. Extraer variante si existe
+                variant = ""
+                try:
+                    adicional_element = product.find_element(By.CSS_SELECTOR, ".adicional span")
+                    adicional_text = adicional_element.text.strip()
+                    if adicional_text:
+                        variant = adicional_text.upper()
+                        variant = variant.replace(' ', '').replace('/', '-').replace('\\', '-')
+                        # Solo añadir si no está ya en el código
+                        if not code.endswith(f"-{variant}"):
+                            code = f"{code}-{variant}"
+                except Exception:
+                    pass
 
-            # Guardar datos estructurados
-            product_data = {
-                'codigo': code,
-                'descripcion': description,
-                'precio': price,
-                'imagen_url': image_url,
-                'imagen_local': f"img-scraping/{img_name}",
-                'variante': variant,
-                'codigo_de_barras': codigo_barra,
-                "categoria": categoria_principal,
-                "subcategoria": subcategoria
-            }
-            products.append(product_data)
-            
-            # Mostrar progreso con formato
-            print(f"{Fore.GREEN}⚡ Procesado {index + 1}/{total_products} {Style.RESET_ALL} | {Fore.CYAN}Código: {code}{Style.RESET_ALL} | Price: {price}")
+                # 5. Extraer URL de la imagen
+                try:
+                    image_element = product.find_element(By.CSS_SELECTOR, ".card-img-top")
+                    image_url = (
+                        image_element.get_attribute("src")
+                        or image_element.get_attribute("data-src")
+                        or image_element.get_attribute("data-original")
+                        or ""
+                    )
+                except Exception:
+                    image_url = ""
 
-        except Exception as e:
-            print(f"Error al extraer producto individual en índice {index}: {e}")
-            continue
+                # 6. Descargar imagen localmente si está activado
+                img_name = f"{code}.jpg"
+                img_path = os.path.join(img_dir, img_name)
+                
+                if DOWNLOAD_IMAGES and image_url:
+                    try:
+                        # Evitar errores si la imagen es una URL base64/data
+                        if not image_url.startswith("data:"):
+                            response = requests.get(image_url, stream=True, verify=False, timeout=10)
+                            if response.status_code == 200:
+                                with open(img_path, 'wb') as f:
+                                    for chunk in response.iter_content(1024):
+                                        f.write(chunk)
+                    except Exception as img_err:
+                        print(f"Advertencia al descargar imagen para {code}: {img_err}")
+
+                # 7. Obtener código de barras del Excel/SQLite si existe
+                codigo_barra = obtener_codigo_barra(code, scraping_product.db_path) if scraping_product.db_path else ""
+
+                # Guardar datos estructurados
+                product_data = {
+                    'codigo': code,
+                    'descripcion': description,
+                    'precio': price,
+                    'imagen_url': image_url,
+                    'imagen_local': f"img-scraping/{img_name}",
+                    'variante': variant,
+                    'codigo_de_barras': codigo_barra,
+                    "categoria": categoria_principal,
+                    "subcategoria": subcategoria
+                }
+                products.append(product_data)
+                
+                # Mostrar progreso con formato
+                print(f"{Fore.GREEN}⚡ Procesado {index + 1}/{total_products} {Style.RESET_ALL} | {Fore.CYAN}Código: {code}{Style.RESET_ALL} | Price: {price}")
+                break  # Éxito en este producto, terminar intentos
+
+            except StaleElementReferenceException as stale_err:
+                time.sleep(0.3)
+                if intento == 2:
+                    print(f"{Fore.RED}⚠️ No se pudo extraer producto en índice {index} por StaleElementReference tras 3 intentos.{Style.RESET_ALL}")
+                    registrar_error(f"Fallo por StaleElementReference en producto índice {index} tras 3 intentos", stale_err)
+            except Exception as e:
+                print(f"Error al extraer producto individual en índice {index}: {e}")
+                registrar_error(f"Error al extraer producto en índice {index}", e)
+                break
 
     # Categoría completa formateada
     categoria_grupal = categoria_principal

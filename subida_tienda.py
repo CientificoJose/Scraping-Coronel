@@ -1,14 +1,18 @@
 from api_tiendanube import crear_producto, buscar_producto_por_sku, actualizar_producto, limpiar_cache_productos
 from colorama import Fore, Style
 from app.core.db import obtener_productos_de_db as core_obtener_productos_de_db
+from app.core.logger import registrar_error
+import concurrent.futures
+import threading
 import json
 import time
 import os
 import sys
 
-def run_sync(ganancia=None, download_images=None):
+def run_sync(ganancia=None, download_images=None, concurrency=3):
     """
     Función ejecutable para sincronizar productos desde SQLite local hacia Tiendanube.
+    Soporta ejecución concurrente mediante ThreadPoolExecutor para acelerar la subida.
     """
     # Limpiar caché
     limpiar_cache_productos()
@@ -40,6 +44,7 @@ def run_sync(ganancia=None, download_images=None):
 
     print(f"Se ingresó {ganancia}% como ganancia porcentaje")
     print(f"Descarga de imágenes: {'Activada' if download_images == 't' else 'Desactivada'}")
+    print(f"Concurrencia de subida: {concurrency} hilos simultáneos")
     
     # Obtener los productos de la BD
     todos_los_productos = core_obtener_productos_de_db(db_path)
@@ -66,17 +71,21 @@ def run_sync(ganancia=None, download_images=None):
     print(f" FIN DEL LISTADO - {len(todos_los_productos)} PRODUCTOS ")
     print("="*50 + Fore.RESET)
     
-    # Procesar cada producto
     total_productos = len(todos_los_productos)
-    productos_procesados = 0
+    if total_productos == 0:
+        print(Fore.YELLOW + "⚠ No hay productos en la base de datos para sincronizar." + Fore.RESET)
+        return
+        
+    print(Fore.CYAN + f"\nIniciando procesamiento concurrente de {total_productos} productos con {concurrency} trabajadores..." + Fore.RESET)
     
-    print(Fore.CYAN + f"\nIniciando procesamiento de {total_productos} productos..." + Fore.RESET)
+    start_total = time.time()
+    lock = threading.Lock()
+    contador = {"procesados": 0, "creados": 0, "actualizados": 0, "errores": 0}
     
-    for producto in todos_los_productos:
-        productos_procesados += 1
+    def procesar_un_producto(producto):
         try:
-            producto_id = buscar_producto_por_sku(producto['codigo'])
             start = time.time()
+            producto_id = buscar_producto_por_sku(producto['codigo'])
             if producto_id:
                 result = actualizar_producto(producto_id, producto, ganancia, download_images)
                 tipo = 'actualizado'
@@ -85,15 +94,45 @@ def run_sync(ganancia=None, download_images=None):
                 tipo = 'creado'
             elapsed = time.time() - start
             
-            if tipo == 'actualizado':
-                print(Fore.YELLOW + f"↻ Producto {producto['codigo']} actualizado en {elapsed:.2f} segundos ({productos_procesados}/{total_productos})" + Fore.RESET)
-            else:
-                print(Fore.GREEN + f"✔ Producto {producto['codigo']} creado en {elapsed:.2f} segundos ({productos_procesados}/{total_productos})" + Fore.RESET)
+            with lock:
+                contador["procesados"] += 1
+                idx = contador["procesados"]
+                if tipo == 'actualizado':
+                    contador["actualizados"] += 1
+                    print(Fore.YELLOW + f"↻ [{idx}/{total_productos}] Producto {producto['codigo']} actualizado ({elapsed:.2f}s)" + Fore.RESET)
+                else:
+                    contador["creados"] += 1
+                    print(Fore.GREEN + f"✔ [{idx}/{total_productos}] Producto {producto['codigo']} creado ({elapsed:.2f}s)" + Fore.RESET)
         except Exception as e:
-            print(Fore.RED + f"✖ Error en producto {producto['codigo']}: {str(e)} ({productos_procesados}/{total_productos})" + Fore.RESET)
+            with lock:
+                contador["procesados"] += 1
+                contador["errores"] += 1
+                idx = contador["procesados"]
+                print(Fore.RED + f"✖ [{idx}/{total_productos}] Error en {producto['codigo']}: {str(e)}" + Fore.RESET)
+            registrar_error(f"Error sincronizando producto {producto.get('codigo')}", e)
+
+    # Procesamiento concurrente
+    if concurrency > 1:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+            futures = [executor.submit(procesar_un_producto, prod) for prod in todos_los_productos]
+            concurrent.futures.wait(futures)
+    else:
+        for prod in todos_los_productos:
+            procesar_un_producto(prod)
             
     limpiar_cache_productos()
-    print(Fore.GREEN + f"\nProcesamiento completado. {productos_procesados} productos procesados." + Fore.RESET)
+    total_elapsed = time.time() - start_total
+    
+    print(Fore.GREEN + "\n" + "="*50)
+    print(" RESUMEN DE SINCRONIZACIÓN ")
+    print("="*50 + Fore.RESET)
+    print(f"✔ Procesados: {contador['procesados']}/{total_productos}")
+    print(f"★ Creados: {contador['creados']}")
+    print(f"↻ Actualizados: {contador['actualizados']}")
+    if contador["errores"] > 0:
+        print(Fore.RED + f"✖ Errores: {contador['errores']}" + Fore.RESET)
+    print(f"⏱ Tiempo total: {total_elapsed:.1f} segundos ({total_elapsed/60:.2f} minutos)")
+    print(Fore.GREEN + "="*50 + Fore.RESET)
 
 if __name__ == "__main__":
     print(Fore.CYAN + "\nINICIANDO SINCRONIZACION CON TIENDANUBE..." + Fore.RESET)

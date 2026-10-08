@@ -2,6 +2,7 @@
 /img-scraping/
 /deepseek_logs/
 /openai_logs/
+/logs/
 /__pycache__/
 
 

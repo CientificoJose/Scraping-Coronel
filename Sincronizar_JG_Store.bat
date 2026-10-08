@@ -11,6 +11,14 @@ echo           INICIANDO SINCRONIZADOR DE TIENDA
 echo ============================================================
 echo.
 python -X utf8 main.py
+if errorlevel 1 (
+    echo.
+    echo ============================================================
+    echo ⚠️  ATENCIÓN: El proceso terminó con un error o advertencia.
+    echo 📁 Revisa el registro detallado en: logs\errores.log
+    echo ============================================================
+    echo.
+)
 echo.
 echo Presione cualquier tecla para salir...
 pause > nul

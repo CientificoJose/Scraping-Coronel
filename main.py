@@ -8,6 +8,9 @@ try:
 except Exception:
     pass
 
+from app.core.logger import inicializar_sistema_logs, registrar_error, registrar_info
+inicializar_sistema_logs()
+
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -204,6 +207,7 @@ def main():
     parser_sync = subparsers.add_parser("sync", help="Sincroniza y crea/actualiza los productos de SQLite en Tiendanube")
     parser_sync.add_argument("-g", "--ganancia", type=int, help="Porcentaje de ganancia para precios (ej. 40)")
     parser_sync.add_argument("-d", "--download-images", choices=["t", "f"], help="Descargar imágenes ('t' o 'f')")
+    parser_sync.add_argument("-c", "--concurrency", type=int, default=3, help="Cantidad de hilos concurrentes para subida (default: 3)")
     parser_sync.add_argument("-y", "--no-prompt", action="store_true", help="No solicitar confirmación interactiva")
 
     # Subcomando stock
@@ -213,12 +217,14 @@ def main():
     parser_full = subparsers.add_parser("full-run", help="Ejecuta el pipeline completo (scrape -> sync -> stock)")
     parser_full.add_argument("-g", "--ganancia", type=int, help="Porcentaje de ganancia para precios (ej. 40)")
     parser_full.add_argument("-d", "--download-images", choices=["t", "f"], help="Descargar imágenes ('t' o 'f')")
+    parser_full.add_argument("-c", "--concurrency", type=int, default=3, help="Cantidad de hilos concurrentes para subida (default: 3)")
     parser_full.add_argument("-y", "--no-prompt", action="store_true", help="No solicitar confirmación interactiva")
     
     # Subcomando scrape-sync
     parser_scrape_sync = subparsers.add_parser("scrape-sync", help="Ejecuta scrape y sync secuencialmente (sin actualizar stocks)")
     parser_scrape_sync.add_argument("-g", "--ganancia", type=int, help="Porcentaje de ganancia para precios (ej. 40)")
     parser_scrape_sync.add_argument("-d", "--download-images", choices=["t", "f"], help="Descargar imágenes ('t' o 'f')")
+    parser_scrape_sync.add_argument("-c", "--concurrency", type=int, default=3, help="Cantidad de hilos concurrentes para subida (default: 3)")
     parser_scrape_sync.add_argument("-y", "--no-prompt", action="store_true", help="No solicitar confirmación interactiva")
     
     args = parser.parse_args()
@@ -247,7 +253,7 @@ def main():
             
     elif args.command == "sync":
         print(Fore.CYAN + "\n=== [EJECUTANDO SYNC] ===" + Style.RESET_ALL)
-        run_sync(ganancia, download_images)
+        run_sync(ganancia, download_images, concurrency=args.concurrency)
         print(Fore.GREEN + "\n✓ Sincronización de productos finalizada." + Style.RESET_ALL)
         
     elif args.command == "stock":
@@ -271,7 +277,7 @@ def main():
             
         # 2. Sync (usa la ganancia y descargas confirmadas en el paso anterior)
         print(Fore.CYAN + "\n--- Paso 2: Sincronización de Productos ---" + Style.RESET_ALL)
-        run_sync(final_ganancia, final_download)
+        run_sync(final_ganancia, final_download, concurrency=args.concurrency)
         
         # 3. Stock
         print(Fore.CYAN + "\n--- Paso 3: Sincronización de Stock ---" + Style.RESET_ALL)
@@ -294,7 +300,7 @@ def main():
             
         # 2. Sync (usa los mismos parámetros ganancia y descargas)
         print(Fore.CYAN + "\n--- Paso 2: Sincronización de Productos ---" + Style.RESET_ALL)
-        run_sync(final_ganancia, final_download)
+        run_sync(final_ganancia, final_download, concurrency=args.concurrency)
         
         print(Fore.GREEN + "\n★ Pipeline SCRAPE-SYNC completado exitosamente ★" + Style.RESET_ALL)
 

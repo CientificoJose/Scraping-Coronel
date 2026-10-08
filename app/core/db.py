@@ -3,6 +3,7 @@ import sqlite3
 import openpyxl
 from contextlib import closing
 from typing import List, Dict, Optional
+from app.core.models import Producto
 
 def get_default_db_path() -> str:
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -166,6 +167,21 @@ def obtener_productos_de_db(db_path: Optional[str] = None) -> List[Dict]:
             return lista_productos
     except Exception as e:
         print(f"Error leyendo productos de SQLite: {str(e)}")
+        return []
+
+def obtener_productos_objetos(db_path: Optional[str] = None) -> List[Producto]:
+    """Obtiene todos los productos de SQLite como objetos Pydantic Producto fuertemente tipados."""
+    if not db_path:
+        db_path = get_default_db_path()
+        
+    try:
+        with closing(sqlite3.connect(db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM productos")
+            rows = cursor.fetchall()
+            return [Producto.from_row(row) for row in rows]
+    except Exception as e:
+        print(f"Error leyendo productos tipados de SQLite: {str(e)}")
         return []
 
 def actualizar_dimensiones_en_bd(productos: List[Dict], dimensiones: List[Dict], db_path: Optional[str] = None):

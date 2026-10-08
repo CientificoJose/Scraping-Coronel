@@ -2,6 +2,7 @@ import os
 import time
 import json
 import base64
+import threading
 import requests
 from typing import List, Dict, Optional
 from functools import wraps
@@ -20,16 +21,49 @@ class TiendanubeClient:
             "User-Agent": self.user_agent
         }
         
+        # Lock para operaciones concurrentes
+        self._lock = threading.Lock()
+        
         # Caché de productos en disco
         self.cache_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'api_cache')
         self.products_cache_path = os.path.join(self.cache_dir, 'products_cache.json')
         os.makedirs(self.cache_dir, exist_ok=True)
         self.products_cache = self._load_cache()
         
+        # Índice rápido de SKUs en memoria O(1)
+        self._sku_to_id: Dict[str, int] = {}
+        self._rebuild_sku_index()
+        
         # Cachés en memoria
         self.cache_categorias = {}
         self.cache_variante = {}
         self.cache_ids_categorias = {}
+
+    def _rebuild_sku_index(self):
+        """Reconstruye el índice en memoria SKU -> Product ID para búsquedas O(1) inmediatas."""
+        self._sku_to_id.clear()
+        for page_data in self.products_cache.values():
+            if isinstance(page_data, list):
+                for p in page_data:
+                    p_id = p.get('id')
+                    for v in p.get('variants', []):
+                        sku = v.get('sku')
+                        if sku and p_id:
+                            self._sku_to_id[sku.strip()] = p_id
+
+    def _request_with_retry(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Wrapper con reintentos exponenciales para proteger contra 429 (Rate Limit)."""
+        max_retries = 4
+        backoff = 2.0
+        for attempt in range(max_retries):
+            resp = requests.request(method, url, **kwargs)
+            if resp.status_code == 429:
+                retry_after = float(resp.headers.get("Retry-After", backoff))
+                time.sleep(retry_after)
+                backoff *= 1.5
+                continue
+            return resp
+        return resp
 
     def _load_cache(self) -> Dict:
         try:
@@ -41,20 +75,23 @@ class TiendanubeClient:
         return {}
 
     def save_cache(self):
-        try:
-            with open(self.products_cache_path, 'w', encoding='utf-8') as f:
-                json.dump(self.products_cache, f, indent=2)
-        except Exception as e:
-            print(Fore.YELLOW + f"Error guardando caché: {e}" + Style.RESET_ALL)
+        with self._lock:
+            try:
+                with open(self.products_cache_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.products_cache, f, indent=2)
+            except Exception as e:
+                print(Fore.YELLOW + f"Error guardando caché: {e}" + Style.RESET_ALL)
 
     def limpiar_cache_productos(self):
-        try:
-            if os.path.exists(self.products_cache_path):
-                os.remove(self.products_cache_path)
-                print(Fore.YELLOW + "✓ Caché de productos eliminada" + Style.RESET_ALL)
-            self.products_cache = {}
-        except Exception as e:
-            print(Fore.RED + f"Error limpiando caché: {str(e)}" + Style.RESET_ALL)
+        with self._lock:
+            try:
+                if os.path.exists(self.products_cache_path):
+                    os.remove(self.products_cache_path)
+                    print(Fore.YELLOW + "✓ Caché de productos eliminada" + Style.RESET_ALL)
+                self.products_cache = {}
+                self._sku_to_id.clear()
+            except Exception as e:
+                print(Fore.RED + f"Error limpiando caché: {str(e)}" + Style.RESET_ALL)
 
     def buscar_id_categoria(self, nombre: str, parent_id: Optional[int] = None) -> Optional[int]:
         categorias = self.obtener_categorias_tienda()
@@ -197,37 +234,52 @@ class TiendanubeClient:
             return None
 
     def buscar_producto_por_sku(self, sku: str) -> Optional[int]:
+        if not sku:
+            return None
+        sku_clean = sku.strip()
+        with self._lock:
+            if sku_clean in self._sku_to_id:
+                return self._sku_to_id[sku_clean]
+
         page = 1
         per_page = 200
         pbar = None
         try:
             while True:
                 cache_key = f"products_page_{page}"
-                if cache_key in self.products_cache:
-                    productos = self.products_cache[cache_key]
-                else:
+                with self._lock:
+                    in_cache = cache_key in self.products_cache
+                    productos = self.products_cache.get(cache_key, [])
+
+                if not in_cache:
                     if pbar is None:
-                        response_count = requests.get(f"{self.base_url}/products?page=1&per_page=1", headers=self.headers, timeout=10)
+                        response_count = self._request_with_retry("GET", f"{self.base_url}/products?page=1&per_page=1", headers=self.headers, timeout=10)
                         total_products = int(response_count.headers.get('X-Total-Count', 1000)) if response_count.ok else 1000
                         total_pages = (total_products + per_page - 1) // per_page
                         pbar = tqdm(total=total_pages, desc="Guardando API de Productos en Cache", unit="página",
                                   bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]")
                     
                     url = f"{self.base_url}/products?page={page}&per_page={per_page}"
-                    response = requests.get(url, headers=self.headers, timeout=15)
+                    response = self._request_with_retry("GET", url, headers=self.headers, timeout=15)
                     response.raise_for_status()
                     productos = response.json()
-                    self.products_cache[cache_key] = productos
+                    with self._lock:
+                        self.products_cache[cache_key] = productos
+                        for p in productos:
+                            p_id = p.get('id')
+                            for v in p.get('variants', []):
+                                if v.get('sku') and p_id:
+                                    self._sku_to_id[v['sku'].strip()] = p_id
                     self.save_cache()
                     if pbar:
                         pbar.update(1)
                 
-                for producto in productos:
-                    for variante in producto.get('variants', []):
-                        if variante.get('sku') == sku:
-                            if pbar:
-                                pbar.close()
-                            return producto["id"]
+                with self._lock:
+                    if sku_clean in self._sku_to_id:
+                        if pbar:
+                            pbar.close()
+                        return self._sku_to_id[sku_clean]
+
                 if len(productos) < per_page:
                     break
                 page += 1
@@ -308,9 +360,12 @@ class TiendanubeClient:
             if descripcion_producto:
                 payload["description"] = {"es": descripcion_producto}
                 
-            response = requests.post(f"{self.base_url}/products", headers=self.headers, json=payload, timeout=20)
+            response = self._request_with_retry("POST", f"{self.base_url}/products", headers=self.headers, json=payload, timeout=20)
             response.raise_for_status()
-            return response.json()['id']
+            nuevo_id = response.json()['id']
+            with self._lock:
+                self._sku_to_id[producto['codigo'].strip()] = nuevo_id
+            return nuevo_id
         except Exception as e:
             print(Fore.RED + f"Error creando producto: {type(e).__name__} - {str(e)}" + Style.RESET_ALL)
             if 'payload' in locals():
@@ -333,7 +388,7 @@ class TiendanubeClient:
                 "price": precio,      
             }
             
-            response = requests.put(f"{self.base_url}/products/{producto_id}", headers=self.headers, json=payload_base, timeout=15)
+            response = self._request_with_retry("PUT", f"{self.base_url}/products/{producto_id}", headers=self.headers, json=payload_base, timeout=15)
             response.raise_for_status()
                 
             variante_id = self.obtener_id_variante(producto_id)
@@ -345,7 +400,7 @@ class TiendanubeClient:
                     "price": precio,
                 }
                 
-                response_var = requests.put(f"{self.base_url}/products/{producto_id}/variants/{variante_id}", headers=self.headers, json=payload_variante, timeout=15)
+                response_var = self._request_with_retry("PUT", f"{self.base_url}/products/{producto_id}/variants/{variante_id}", headers=self.headers, json=payload_variante, timeout=15)
                 response_var.raise_for_status()
                     
             print(Fore.GREEN + f"✔ Producto {producto_id} actualizado correctamente - Precio: {precio} | Codigo: {producto['codigo']}" + Style.RESET_ALL)
